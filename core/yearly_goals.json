@@ -1,0 +1,31 @@
+{
+  "profile": {
+    "hunter_name": "La Pulga",
+    "year": 2026,
+    "north_star": "Financial sufficient"
+  },
+  "goals": [
+    {
+      "id": "goal_1",
+      "title": "Become financial discipline and responsible",
+      "category": "Life",
+      "description": "Enforce a strict \"Pay Yourself First\" rule by routing 20% of all monthly income to savings immediately. Conduct monthly financial audits on digital statements to eliminate impulse spending and counter procrastination.",
+      "success_metric": "Save a set target of R1,000+ per month and successfully complete 12 consecutive monthly digital spending audits.",
+      "deadline": "2026-12-30",
+      "priority": 3,
+      "milestones": [
+        "Q3 acceleration: advance 'Become financial discipline and responsible' toward Save a set target of R1,000+ per month and successfully complete 12 consecutive monthly digital spending audits.",
+        "Q4 completion: advance 'Become financial discipline and responsible' toward Save a set target of R1,000+ per month and successfully complete 12 consecutive monthly digital spending audits."
+      ],
+      "monthly_focus": [
+        "Become financial discipline and responsible: Define one monthly milestone for this goal"
+      ],
+      "weekly_targets": [
+        "Become financial discipline and responsible: Define one weekly action for this goal"
+      ],
+      "daily_habits": [
+        "Become financial discipline and responsible: Define one daily habit for this goal"
+      ]
+    }
+  ]
+}

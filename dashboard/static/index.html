@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. - System HUD Controller</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Three.js Open Source WebGL 3D Engine -->
+    <script src="three.min.js"></script>
+</head>
+<body>
+    <!-- Abstract Cyberpunk Background Glows -->
+    <div class="glow-bg-1"></div>
+    <div class="glow-bg-2"></div>
+    <div class="hud-scanline"></div>
+
+    <div class="hud-container">
+        <!-- HEADER HUD -->
+        <header class="hud-header">
+            <div class="profile-section">
+                <div class="rank-badge" id="rank-badge">E</div>
+                <div class="profile-info">
+                    <span class="profile-title">SYSTEM INTERFACE // COGNITIVE COUPLING</span>
+                    <h1 class="hunter-name" id="hunter-name">Hunter</h1>
+                    <div id="hud-attributes" style="font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.8rem; letter-spacing: 1.5px; color: var(--cyan); margin-top: 0.15rem; text-shadow: 0 0 5px rgba(0,242,254,0.3);">
+                        STR: 10 // INT: 10 // AGI: 10 // DIS: 10
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dynamic Tab Navigation Menu -->
+            <nav class="hud-tabs">
+                <button class="tab-link active" onclick="switchTab('hud')">STATS HUD</button>
+                <button class="tab-link" onclick="switchTab('plan')">EXECUTION PLAN</button>
+                <button class="tab-link" onclick="switchTab('goals')">GOALS SETUP</button>
+                <button class="tab-link" onclick="switchTab('intel')">INTELLIGENCE BRIEF</button>
+            </nav>
+
+            <div class="currency-section">
+                <div class="streak-badge">
+                    <span class="streak-label">STREAK</span>
+                    <span class="streak-val" id="streak-val">0</span>
+                </div>
+                <div class="gold-badge">
+                    <span class="gold-icon">🪙</span>
+                    <span class="gold-val" id="gold-val">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- TAB CONTENT 1: STATS HUD -->
+        <div id="pane-hud" class="tab-pane active">
+            <!-- LEVEL & PROGRESS CARD -->
+            <section class="grid-card progress-card" style="margin-bottom: 1.5rem;">
+                <div class="progress-header">
+                    <span class="level-label" id="level-label">LEVEL 1</span>
+                    <span class="xp-ratio" id="xp-ratio">0 / 1000 XP</span>
+                </div>
+                <div class="xp-bar-container">
+                    <div class="xp-bar-fill" id="xp-bar-fill"></div>
+                </div>
+            </section>
+
+            <div class="hud-grid">
+                <!-- LEFT COLUMN: SYSTEM CONTROLS & LOGS -->
+                <div class="hud-column">
+                    <section class="grid-card control-panel">
+                        <h2 class="card-title"><span class="title-icon">⚡</span> SYSTEM ORCHESTRATION</h2>
+                        <p class="subtitle">Direct interface with local main.py system procedures.</p>
+                        
+                        <div class="actions-container">
+                            <button class="action-btn focus-btn" id="btn-focus">
+                                <span class="btn-glow"></span>
+                                <span class="btn-text" id="btn-focus-text">INITIATE FOCUS SESSION</span>
+                            </button>
+                            
+                            <div class="action-row">
+                                <button class="action-btn secondary-btn" onclick="triggerAction('daily_protocol')">
+                                    <span>RUN DAILY PROTOCOL</span>
+                                </button>
+                                <button class="action-btn secondary-btn" onclick="triggerAction('awakening')">
+                                    <span>START AWAKENING</span>
+                                </button>
+                            </div>
+                            
+                            <button class="action-btn secondary-btn" onclick="triggerAction('intelligence_brief')">
+                                <span>SCRAPE INTEL BRIEF</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="grid-card terminal-card">
+                        <h2 class="card-title"><span class="title-icon">📟</span> J.A.R.V.I.S. CONSOLE LOGS</h2>
+                        <div class="terminal-logs" id="terminal-logs"></div>
+                    </section>
+                </div>
+
+                <!-- CENTER COLUMN: 360° CHARACTER HOLOGRAM & SOLO LEVELING SYSTEM -->
+                <div class="hud-column center-column">
+                    <section class="grid-card core-diagnostic-card solo-character-card">
+                        <div class="card-header-flex">
+                            <h2 class="card-title center-title"><span class="title-icon">👤</span> SHADOW MONARCH // 360° CHARACTER HOLOGRAM</h2>
+                            <span class="system-status-badge">SOLO PLAYER STATUS</span>
+                        </div>
+
+                        <!-- 360° Character Canvas & Picture 2 Layout -->
+                        <div class="character-hologram-wrapper picture2-layout">
+                            <!-- SVG Circuit Lines Layer -->
+                            <svg class="circuit-svg-layer" viewBox="0 0 800 440">
+                                <!-- Glowing PCB Circuit Traces -->
+                                <path d="M 200 60 L 250 60 L 280 90 L 310 90" stroke="rgba(168, 85, 247, 0.45)" stroke-width="2" fill="none" class="circuit-path" />
+                                <path d="M 200 160 L 260 160 L 280 180 L 320 180" stroke="rgba(168, 85, 247, 0.45)" stroke-width="2" fill="none" class="circuit-path" />
+                                <path d="M 200 270 L 250 270 L 270 290 L 310 290" stroke="rgba(168, 85, 247, 0.45)" stroke-width="2" fill="none" class="circuit-path" />
+                                <path d="M 600 60 L 550 60 L 520 90 L 490 90" stroke="rgba(168, 85, 247, 0.45)" stroke-width="2" fill="none" class="circuit-path" />
+                                <path d="M 600 180 L 550 180 L 530 200 L 490 200" stroke="rgba(168, 85, 247, 0.45)" stroke-width="2" fill="none" class="circuit-path" />
+                                <path d="M 600 320 L 550 320 L 520 340 L 480 340" stroke="rgba(168, 85, 247, 0.45)" stroke-width="2" fill="none" class="circuit-path" />
+                                <circle cx="200" cy="60" r="3.5" fill="#c084fc" />
+                                <circle cx="200" cy="160" r="3.5" fill="#c084fc" />
+                                <circle cx="200" cy="270" r="3.5" fill="#c084fc" />
+                                <circle cx="600" cy="60" r="3.5" fill="#c084fc" />
+                                <circle cx="600" cy="180" r="3.5" fill="#c084fc" />
+                                <circle cx="600" cy="320" r="3.5" fill="#c084fc" />
+                            </svg>
+
+                            <!-- LEFT PANEL: PHYSICAL VITALS RUNE FRAME -->
+                            <div class="solo-panel-left">
+                                <div class="panel-rune-header">ᚱᚢᚾᛖᛋ • ᚱᚢᚾᛖᛋ</div>
+                                <div class="vital-entry">
+                                    <span class="v2-label">HEIGHT:</span>
+                                    <span class="v2-val">5ft 11in</span>
+                                </div>
+                                <div class="vital-entry">
+                                    <span class="v2-label">WAIST:</span>
+                                    <span class="v2-val">26cm</span>
+                                </div>
+                                <div class="vital-entry">
+                                    <span class="v2-label">WEIGHT:</span>
+                                    <span class="v2-val">72kg</span>
+                                </div>
+                                <div class="vital-entry target-entry">
+                                    <span class="v2-label">TARGET:</span>
+                                    <span class="v2-val highlight">82kg</span>
+                                    <span class="v2-sub">LEAN BULK</span>
+                                </div>
+                                <div class="panel-rune-footer">ᚱᚢᚾᛖᛋ</div>
+                            </div>
+
+                            <!-- CENTER 3D CHARACTER CANVAS -->
+                            <div class="solo-center-canvas-box">
+                                <canvas id="canvas-character-3d" width="460" height="420"></canvas>
+                                <div class="strength-indicator">
+                                    <span class="str-label">STRENGTH:</span>
+                                    <span class="str-val">88</span>
+                                </div>
+                            </div>
+
+                            <!-- RIGHT PANELS: QUESTS, INVENTORY, NOTIFICATIONS -->
+                            <div class="solo-panel-right">
+                                <!-- Top Box: Quests -->
+                                <div class="solo-box quest-box">
+                                    <div class="box-rune-title">◆ QUESTS ◆</div>
+                                    <div class="quest-mini-item">◯ QUEST OBJECTIVE</div>
+                                    <div class="quest-mini-item">◯ SHADOW EXTRACTION</div>
+                                </div>
+
+                                <!-- Mid Box: Inventory -->
+                                <div class="solo-box inventory-box">
+                                    <div class="inventory-grid">
+                                        <div class="inv-slot" title="Shadow Knight Armor">🛡️</div>
+                                        <div class="inv-slot" title="Kamish Wrath Dagger">⚔️</div>
+                                        <div class="inv-slot" title="Demon King Dagger">🗡️</div>
+                                    </div>
+                                    <div class="box-rune-footer">INVENTORY</div>
+                                </div>
+
+                                <!-- Bottom Box: Notifications -->
+                                <div class="solo-box notif-box">
+                                    <span class="notif-icon">🔔</span>
+                                    <span class="notif-title">NOTIFICATIONS</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Solo Leveling Hexagonal Attribute Chart -->
+                        <div class="attribute-radar-section">
+                            <div class="radar-header-label">◆ ATTRIBUTE DISTRIBUTION (SOLO LEVELING) ◆</div>
+                            <canvas id="canvas-radar-hex" width="450" height="230"></canvas>
+                        </div>
+                        
+                        <div class="waveform-container">
+                            <span class="waveform-label">MONARCH AURA AUDIO FREQUENCY</span>
+                            <canvas id="canvas-waveform" width="450" height="50"></canvas>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- RIGHT COLUMN: RADAR, QUESTS & FOCUS LOGS -->
+                <div class="hud-column">
+                    <section class="grid-card radar-card">
+                        <h2 class="card-title"><span class="title-icon">📡</span> SECURE SCANNER GRID</h2>
+                        <div class="radar-container">
+                            <canvas id="canvas-radar" width="350" height="230"></canvas>
+                        </div>
+                    </section>
+
+                    <section class="grid-card quest-panel">
+                        <h2 class="card-title"><span class="title-icon">⚔️</span> DAILY QUEST LOG</h2>
+                        <div class="quest-list" id="daily-quest-list"></div>
+                    </section>
+
+                    <section class="grid-card focus-panel">
+                        <h2 class="card-title"><span class="title-icon">⏱️</span> FOCUS SEGMENTS LOG</h2>
+                        <div class="focus-history" id="focus-history-list"></div>
+                    </section>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT 2: EXECUTION PLAN -->
+        <div id="pane-plan" class="tab-pane">
+            <div class="execution-grid">
+                <!-- LEFT SIDE: HIGHLIGHT METRICS -->
+                <div class="plan-summary-card glass-panel">
+                    <h2 class="plan-title"><span class="title-icon">🎯</span> DECOMPOSED EXECUTION MAP</h2>
+                    <div class="plan-meta-row">
+                        <div class="plan-meta-item">
+                            <span class="meta-label">HUNTER ARCHETYPE</span>
+                            <span class="meta-value" id="plan-hunter-name">Hunter</span>
+                        </div>
+                        <div class="plan-meta-item">
+                            <span class="meta-label">ACTIVE QUARTER</span>
+                            <span class="meta-value" id="plan-quarter">Q3</span>
+                        </div>
+                        <div class="plan-meta-item">
+                            <span class="meta-label">WEEK NUMBER</span>
+                            <span class="meta-value" id="plan-week">1</span>
+                        </div>
+                    </div>
+                    <div class="north-star-display">
+                        <span class="north-star-label">NORTH STAR OBJECTIVE</span>
+                        <div class="north-star-content" id="plan-north-star">No yearly north star set.</div>
+                    </div>
+
+                    <!-- Decomposed lists -->
+                    <div class="focus-layers-container">
+                        <div class="layer-card">
+                            <h3>🌙 MONTHLY FOCUS</h3>
+                            <ul id="plan-monthly-focus-list"></ul>
+                        </div>
+                        <div class="layer-card">
+                            <h3>⚔️ WEEKLY TARGETS</h3>
+                            <ul id="plan-weekly-targets-list"></ul>
+                        </div>
+                        <div class="layer-card">
+                            <h3>⚡ TODAY'S ACTION ITEMS</h3>
+                            <ul id="plan-today-actions-list"></ul>
+                        </div>
+                        <div class="layer-card">
+                            <h3>📝 SHADOW JOURNAL CAPTURES</h3>
+                            <ul id="plan-journal-captures-list" style="max-height: 180px; overflow-y: auto; list-style: none;"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT SIDE: ALL YEARLY GOALS WITH MILESTONES -->
+                <div class="goals-breakdown-card glass-panel">
+                    <h2 class="plan-title"><span class="title-icon">📊</span> YEARLY GOALS BACKLOG</h2>
+                    <div id="plan-goals-backlog" class="goals-backlog-container">
+                        <!-- Dynamic list of goals + decomposed milestones -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT 3: GOALS SETUP -->
+        <div id="pane-goals" class="tab-pane">
+            <div class="goals-wizard-container glass-panel">
+                <h2 class="wizard-title"><span class="title-icon">🛠️</span> J.A.R.V.I.S. GOAL PLANNER WIZARD</h2>
+                <p class="subtitle" style="margin-bottom: 1.5rem;">Configure your target year, North Star goal, and specific yearly objectives. The system will auto-decompose them into quarterly milestones.</p>
+                
+                <form id="form-goals-setup" onsubmit="submitGoalsConfig(event)">
+                    <!-- Profile row -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="input-hunter-name">Hunter Name</label>
+                            <input type="text" id="input-hunter-name" placeholder="Enter name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-target-year">Target Year</label>
+                            <input type="number" id="input-target-year" min="2026" max="2035" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="input-north-star">North Star Objective (One sentence summarizing your year)</label>
+                        <input type="text" id="input-north-star" placeholder="e.g. Architect and launch a secure multi-tenant microservices platform" required>
+                    </div>
+
+                    <!-- Goals lists builder -->
+                    <div class="goals-builder-section">
+                        <h3>Yearly Objectives List (<span id="builder-count">0</span> Added)</h3>
+                        <div class="builder-box">
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 2;">
+                                    <label>Objective Title</label>
+                                    <input type="text" id="build-title" placeholder="e.g. Master system-level Rust programming">
+                                </div>
+                                <div class="form-group">
+                                    <label>Category</label>
+                                    <select id="build-category">
+                                        <option value="Health">Health & Energy</option>
+                                        <option value="Tech">Tech Mastery</option>
+                                        <option value="Business">Business Growth</option>
+                                        <option value="Life">Life Quality</option>
+                                        <option value="Discipline">Discipline & Focus</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Objective Description (Specific actions)</label>
+                                <textarea id="build-desc" placeholder="Details about how this objective will be achieved..."></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Success Metric (Quantifiable benchmark)</label>
+                                    <input type="text" id="build-metric" placeholder="e.g. Complete 3 core projects and write 10,000 lines of safe code">
+                                </div>
+                                <div class="form-group">
+                                    <label>Priority (1-5)</label>
+                                    <input type="number" id="build-priority" min="1" max="5" value="3">
+                                </div>
+                                <div class="form-group">
+                                    <label>Target Deadline</label>
+                                    <input type="date" id="build-deadline">
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="action-btn secondary-btn" onclick="addGoalToBuilder()">ADD OBJECTIVE TO PLAN</button>
+                        </div>
+
+                        <!-- Appended objectives visual display -->
+                        <div class="added-goals-table" id="added-goals-list"></div>
+                    </div>
+
+                    <button type="submit" class="action-btn focus-btn" style="margin-top: 2rem;">SAVE PROFILE AND SYNC QUEST TREE</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- TAB CONTENT 4: INTELLIGENCE BRIEF -->
+        <div id="pane-intel" class="tab-pane">
+            <div class="intel-brief-container glass-panel">
+                <h2 class="intel-title"><span class="title-icon">📰</span> DEEP INTELLIGENCE DISCOVERY BRIEF</h2>
+                <div class="intel-meta-info" id="intel-brief-meta">
+                    Report compilation not yet executed. Click "SCRAPE INTEL BRIEF" on the STATS HUD to query source feeds.
+                </div>
+                
+                <div class="intel-layout-grid" id="intel-brief-data" style="display: none;">
+                    <!-- LEFT SIDE: TREND SUMMARY REPORT -->
+                    <div class="intel-summary-report">
+                        <h3>📈 TECH TREND SUMMARY REPORT</h3>
+                        <div class="intel-report-content" id="intel-trend-summary-text"></div>
+                    </div>
+
+                    <!-- RIGHT SIDE: SECURITY TARGETS -->
+                    <div class="intel-security-report">
+                        <h3>🛡️ THREAT AUDITING FILTER</h3>
+                        <div class="intel-security-list" id="intel-security-findings-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="app.js?v=hologram_sprite_v16"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{
+  "awakening": {
+    "target_hour": 5,
+    "target_minute": 0,
+    "vlc_path": "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
+    "run_on_daily_start": true,
+    "skip_if_already_ran": true
+  },
+  "private_mode": {
+    "launch_intellij": true,
+    "launch_browser": true,
+    "play_voice_greeting": true,
+    "min_deep_work_minutes": 45,
+    "voice_profile": "jarvis",
+    "use_elevenlabs": true,
+    "elevenlabs_api_key": "YOUR_ELEVENLABS_API_KEY",
+    "elevenlabs_voice_id": "nPczCjzI2devNBz1zQrb",
+    "browser_name": "brave",
+    "use_gemini": true,
+    "gemini_api_key": "YOUR_GEMINI_API_KEY",
+    "gemini_model": "gemini-2.0-flash",
+    "enable_process_guard": true,
+    "blocked_processes": [
+      "Discord.exe",
+      "Steam.exe",
+      "Spotify.exe",
+      "epicgameslauncher.exe"
+    ],
+    "enable_hosts_block": false,
+    "blocked_domains": [
+      "youtube.com",
+      "twitter.com",
+      "reddit.com",
+      "instagram.com",
+      "facebook.com"
+    ],
+    "intellij_path": "C:\\Users\\tmvundla\\Downloads\\idea-2026.1.win\\bin\\idea64.exe",
+    "browser_tabs": [
+      "https://github.com",
+      "https://learngitbranching.js.org",
+      "https://learnhtmlcss.online",
+      "https://www.learn-js.org",
+      "https://react-tutorial.app",
+      "https://sqlbolt.com",
+      "https://nodejs.org/en/learn",
+      "https://docker-curriculum.com",
+      "https://skillbuilder.aws",
+      "https://linuxjourney.com",
+      "https://visualgo.net/en",
+      "https://www.freecodecamp.org"
+    ]
+  },
+  "daily_flow": {
+    "offer_private_mode": true,
+    "offer_intelligence_brief": false,
+    "interactive_quest_completion": true
+  }
+}
