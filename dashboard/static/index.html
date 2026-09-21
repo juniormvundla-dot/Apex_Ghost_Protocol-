@@ -1,452 +1,405 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX GHOST — NEURAL INTERFACE</title>
-    <meta name="description" content="Apex Ghost — Neural Life Operating System">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=Outfit:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <script src="three.min.js"></script>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>APEX GHOST — Solo Leveling System</title>
+  <meta name="description" content="Apex Ghost Protocol — Solo Leveling personal evolution OS"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap"/>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
-<!-- ══════════ LAYER 0: ENVIRONMENT ══════════ -->
-<canvas id="bg-canvas"></canvas>
-<div class="noise-overlay"></div>
-<div class="scanline"></div>
-<div id="mouse-glow"></div>
-
-<!-- ══════════ BOOT SEQUENCE ══════════ -->
+<!-- ═══ BOOT OVERLAY ════════════════════════════════════════════════ -->
 <div id="boot-overlay">
-    <div class="boot-content">
-        <div class="boot-logo">APEX GHOST</div>
-        <div class="boot-sub">NEURAL LIFE OPERATING SYSTEM</div>
-        <div id="boot-lines" class="boot-lines"></div>
-        <div class="boot-bar-wrap">
-            <div class="boot-bar" id="boot-progress"></div>
-        </div>
+  <div class="boot-inner">
+    <div class="boot-sigil">
+      <canvas id="boot-canvas" width="200" height="200"></canvas>
     </div>
+    <div class="boot-title">AWAKENING</div>
+    <div class="boot-sub">APEX GHOST PROTOCOL — INITIALIZING</div>
+    <div class="boot-log-wrap">
+      <div id="boot-log"></div>
+    </div>
+    <div class="boot-bar-wrap">
+      <div class="boot-bar-track"><div id="boot-bar" class="boot-bar-fill"></div></div>
+      <div id="boot-pct" class="boot-pct">0%</div>
+    </div>
+  </div>
 </div>
 
-<!-- ══════════ LEVEL UP CINEMATIC ══════════ -->
-<div id="levelup-overlay" class="levelup-overlay" hidden>
-    <div class="lu-particles" id="lu-particles"></div>
-    <div class="lu-text">
-        <div class="lu-title">LEVEL UP</div>
-        <div class="lu-level" id="lu-new-level">LEVEL 2</div>
-        <div class="lu-sub">HUNTER POWER INCREASED</div>
-    </div>
+<!-- ═══ LEVEL UP CINEMATIC ══════════════════════════════════════════ -->
+<div id="levelup-overlay" hidden>
+  <canvas id="lu-canvas"></canvas>
+  <div class="lu-center">
+    <div class="lu-alert">⚠ LEVEL UP ⚠</div>
+    <div class="lu-title">LEVEL UP!</div>
+    <div id="lu-level" class="lu-level">LEVEL 2</div>
+    <div id="lu-rank"  class="lu-rank">RANK B HUNTER</div>
+  </div>
 </div>
 
-<!-- ══════════ MAIN SHELL ══════════ -->
-<div class="hud-shell">
+<!-- ═══ BACKGROUND ══════════════════════════════════════════════════ -->
+<canvas id="bg-canvas"></canvas>
+<div class="vignette"></div>
 
-    <!-- ▌IDENTITY SIDEBAR ▐ -->
-    <aside class="identity-sidebar" id="identity-sidebar">
-        <canvas id="data-stream-canvas" class="data-stream"></canvas>
+<!-- ═══ APP ══════════════════════════════════════════════════════════ -->
+<div class="app-wrapper">
 
-        <!-- Avatar Section -->
-        <div class="avatar-section">
-            <canvas id="avatar-canvas"></canvas>
-            <div class="avatar-rune-overlay">
-                <canvas id="rune-canvas"></canvas>
+  <!-- ── HEADER ─────────────────────────────────────────────────── -->
+  <header class="sys-header">
+    <div class="header-left">
+      <div class="sys-glyph">◈</div>
+      <div class="header-id">
+        <div class="header-name" id="hunter-name">APEX GHOST</div>
+        <div class="header-sub">SHADOW HUNTER · NEURAL OS v5</div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="sys-big-title">SOLO LEVELING SYSTEM</div>
+      <div class="sys-big-sub">HABIT TRACKER</div>
+    </div>
+    <div class="header-right">
+      <div class="header-streak">
+        <span class="streak-fire">🔥</span>
+        <span id="streak-val" class="streak-num">0</span>
+        <span class="streak-label">DAY STREAK</span>
+      </div>
+      <div id="top-clock" class="top-clock">00:00:00</div>
+    </div>
+  </header>
+
+  <!-- ── MAIN CONTENT ───────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- LEFT COLUMN -->
+    <div class="left-col">
+
+      <!-- Profile + Radar -->
+      <section class="profile-card panel">
+        <div class="profile-top">
+          <div class="rank-gem" id="rank-badge">B</div>
+          <div class="profile-info">
+            <div class="profile-name" id="profile-name">APEX GHOST</div>
+            <div class="profile-title">Shadow Architect</div>
+            <div class="profile-level">
+              <span class="lv-word">LEVEL</span>
+              <span id="level-num" class="lv-num">1</span>
             </div>
+          </div>
         </div>
 
-        <!-- Hunter Identity -->
-        <div class="hunter-identity">
-            <div class="hunter-rank-badge" id="rank-badge">B</div>
-            <div class="hunter-name" id="hunter-name">APEX GHOST</div>
-            <div class="hunter-title">RANK <span id="rank-label">B</span> HUNTER</div>
-            <div class="identity-divider">
-                <span class="divider-rune">ᚠ ᚢ ᚦ ᚨ ᚱ ᚲ ᚷ ᚹ</span>
-            </div>
-            <div class="bio-grid">
-                <div class="bio-item">
-                    <span class="bio-label">HP</span>
-                    <div class="bio-bar-wrap">
-                        <div class="bio-bar hp-bar" id="hp-bar-fill" style="width:100%"></div>
-                    </div>
-                    <span class="bio-val" id="hp-display">500/500</span>
-                </div>
-                <div class="bio-item">
-                    <span class="bio-label">GOLD</span>
-                    <span class="bio-val gold-val" id="gold-display">0G</span>
-                </div>
-                <div class="bio-item">
-                    <span class="bio-label">STREAK</span>
-                    <span class="bio-val streak-val" id="streak-display">0 DAYS</span>
-                </div>
-            </div>
-            <div id="north-star-sidebar" class="north-star-quote">"SET YOUR NORTH STAR"</div>
+        <!-- Radar + Hooded Avatar -->
+        <div class="avatar-radar-wrap">
+          <canvas id="radar-canvas" width="280" height="280"></canvas>
+          <canvas id="avatar-canvas" width="280" height="280"></canvas>
         </div>
 
-        <!-- Focus Status -->
-        <div class="focus-status" id="focus-status">
-            <span class="focus-ring" id="focus-ring"></span>
-            <span class="focus-txt" id="focus-txt">SYSTEM STANDBY</span>
+        <!-- XP Bar -->
+        <div class="xp-section">
+          <div class="xp-header">
+            <span class="xp-label">XP</span>
+            <span id="xp-val" class="xp-val">0 / 1000</span>
+          </div>
+          <div class="xp-track"><div id="xp-fill" class="xp-fill" style="width:0%"><div class="xp-shimmer"></div></div></div>
         </div>
-    </aside>
 
-    <!-- ▌COMMAND CENTER ▐ -->
-    <main class="command-center">
+        <!-- North Star -->
+        <div class="north-star-wrap">
+          <span class="ns-icon">✦</span>
+          <span id="north-star" class="ns-text">"SET YOUR NORTH STAR"</span>
+        </div>
+      </section>
 
-        <!-- System Header -->
-        <header class="sys-header">
-            <div class="sys-brand">
-                <canvas id="rune-ring-mini" width="44" height="44"></canvas>
-                <div class="sys-brand-text">
-                    <div class="sys-brand-title">APEX GHOST</div>
-                    <div class="sys-brand-sub" id="hud-attributes">COGNITIVE PROTOCOL ACTIVE</div>
-                </div>
-            </div>
+      <!-- Skill Points -->
+      <section class="skill-points-card panel">
+        <div class="panel-title"><span class="pt-glyph">◆</span> Skill Points</div>
+        <div class="skill-list">
+          <div class="skill-row">
+            <div class="sk-dot sk-str"></div>
+            <div class="sk-name">Strength</div>
+            <div class="sk-bar-wrap"><div id="skb-str" class="sk-bar sk-str-fill"></div></div>
+            <div id="skv-str" class="sk-val">10</div>
+          </div>
+          <div class="skill-row">
+            <div class="sk-dot sk-int"></div>
+            <div class="sk-name">Intelligence</div>
+            <div class="sk-bar-wrap"><div id="skb-int" class="sk-bar sk-int-fill"></div></div>
+            <div id="skv-int" class="sk-val">10</div>
+          </div>
+          <div class="skill-row">
+            <div class="sk-dot sk-agi"></div>
+            <div class="sk-name">Agility</div>
+            <div class="sk-bar-wrap"><div id="skb-agi" class="sk-bar sk-agi-fill"></div></div>
+            <div id="skv-agi" class="sk-val">10</div>
+          </div>
+          <div class="skill-row">
+            <div class="sk-dot sk-dis"></div>
+            <div class="sk-name">Discipline</div>
+            <div class="sk-bar-wrap"><div id="skb-dis" class="sk-bar sk-dis-fill"></div></div>
+            <div id="skv-dis" class="sk-val">10</div>
+          </div>
+          <div class="skill-row">
+            <div class="sk-dot sk-foc"></div>
+            <div class="sk-name">Focus</div>
+            <div class="sk-bar-wrap"><div id="skb-foc" class="sk-bar sk-foc-fill"></div></div>
+            <div id="skv-foc" class="sk-val">10</div>
+          </div>
+        </div>
+      </section>
 
-            <nav class="neural-nav">
-                <button class="nav-btn active" data-tab="core" id="nav-core">
-                    <span class="nav-icon">◈</span>NEURAL CORE
-                </button>
-                <button class="nav-btn" data-tab="quests" id="nav-quests">
-                    <span class="nav-icon">⚔</span>COMBAT LOG
-                </button>
-                <button class="nav-btn" data-tab="goals" id="nav-goals">
-                    <span class="nav-icon">◎</span>OBJECTIVES
-                </button>
-                <button class="nav-btn" data-tab="intel" id="nav-intel">
-                    <span class="nav-icon">◉</span>INTEL
-                </button>
-                <button class="nav-btn" data-tab="system" id="nav-system">
-                    <span class="nav-icon">⬡</span>SYSTEM
-                </button>
-            </nav>
+      <!-- Health Grid -->
+      <section class="health-card panel">
+        <div class="panel-title"><span class="pt-glyph">◆</span> Health</div>
+        <div class="health-labels">
+          <span>HP</span><span>MP</span><span>DISC</span><span>AGI</span><span>STR</span><span>INT</span><span>FOC</span>
+        </div>
+        <div id="health-grid" class="health-grid"></div>
+      </section>
 
-            <div class="sys-metrics">
-                <div class="metric-chip streak-chip">
-                    <span class="chip-icon">🔥</span>
-                    <div class="chip-body">
-                        <span class="chip-val" id="streak-val">0</span>
-                        <span class="chip-label">STREAK</span>
-                    </div>
-                </div>
-                <div class="metric-chip gold-chip">
-                    <span class="chip-icon">🪙</span>
-                    <div class="chip-body">
-                        <span class="chip-val" id="gold-val">0</span>
-                        <span class="chip-label">GOLD</span>
-                    </div>
-                </div>
-                <div class="sys-clock" id="sys-clock">00:00:00</div>
-            </div>
-        </header>
+    </div><!-- /left-col -->
 
-        <!-- Content Viewport -->
-        <div class="content-viewport" id="content-viewport">
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
 
-            <!-- ══ NEURAL CORE TAB ══ -->
-            <div class="tab-pane active" id="pane-core">
+      <!-- Attribute Progress -->
+      <section class="attributes-card panel">
+        <div class="panel-title"><span class="pt-glyph">◆</span> Attribute Matrix</div>
+        <div class="attr-list">
+          <div class="attr-row">
+            <div class="attr-label"><span class="attr-dot ad-str"></span>STR</div>
+            <div class="attr-track"><div id="ab-str" class="attr-bar ab-str-fill"></div></div>
+            <div id="av-str" class="attr-val">10</div>
+          </div>
+          <div class="attr-row">
+            <div class="attr-label"><span class="attr-dot ad-int"></span>INT</div>
+            <div class="attr-track"><div id="ab-int" class="attr-bar ab-int-fill"></div></div>
+            <div id="av-int" class="attr-val">10</div>
+          </div>
+          <div class="attr-row">
+            <div class="attr-label"><span class="attr-dot ad-agi"></span>AGI</div>
+            <div class="attr-track"><div id="ab-agi" class="attr-bar ab-agi-fill"></div></div>
+            <div id="av-agi" class="attr-val">10</div>
+          </div>
+          <div class="attr-row">
+            <div class="attr-label"><span class="attr-dot ad-dis"></span>DIS</div>
+            <div class="attr-track"><div id="ab-dis" class="attr-bar ab-dis-fill"></div></div>
+            <div id="av-dis" class="attr-val">10</div>
+          </div>
+          <div class="attr-row">
+            <div class="attr-label"><span class="attr-dot ad-foc"></span>FOC</div>
+            <div class="attr-track"><div id="ab-foc" class="attr-bar ab-foc-fill"></div></div>
+            <div id="av-foc" class="attr-val">10</div>
+          </div>
+        </div>
+        <div class="gold-streak-row">
+          <div class="gs-chip gold-chip"><span class="gs-icon">◈</span><div><div id="gold-val" class="gs-num">0G</div><div class="gs-lbl">GOLD</div></div></div>
+          <div class="gs-chip streak-chip"><span class="gs-icon">🔥</span><div><div id="streak-val2" class="gs-num">0</div><div class="gs-lbl">STREAK</div></div></div>
+        </div>
+      </section>
 
-                <!-- LEVEL HERO BAR -->
-                <div class="level-hero-panel panel">
-                    <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                    <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                    <div class="level-hero-inner">
-                        <div class="level-left">
-                            <div class="level-num-wrap">
-                                <span class="level-prefix">LVL</span>
-                                <span class="level-num" id="level-num">1</span>
-                            </div>
-                            <span class="level-hunter-tag" id="level-tag">HUNTER</span>
-                        </div>
-                        <div class="level-center">
-                            <div class="xp-header">
-                                <span class="xp-label">EXPERIENCE POINTS</span>
-                                <span class="xp-ratio" id="xp-ratio">0 / 1000 XP</span>
-                            </div>
-                            <canvas id="xp-canvas" height="32"></canvas>
-                            <div class="xp-milestones">
-                                <span>▼25%</span><span>▼50%</span><span>▼75%</span>
-                            </div>
-                        </div>
-                        <div class="level-right">
-                            <div class="next-level-info">
-                                <span class="nlabel">NEXT RANK</span>
-                                <span class="nval" id="next-rank-val">A</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+      <!-- Goal Completion -->
+      <section class="goal-card panel">
+        <div class="panel-title"><span class="pt-glyph">◆</span> Goal Completion</div>
+        <div class="goal-pct-wrap">
+          <div id="goal-pct" class="goal-pct">0%</div>
+          <div class="goal-sub">of today's contracts cleared</div>
+        </div>
+        <div class="goal-bar-wrap">
+          <div class="goal-bar-track"><div id="goal-bar" class="goal-bar-fill"></div></div>
+        </div>
+      </section>
 
-                <!-- MAIN 2-COLUMN ZONE -->
-                <div class="core-grid">
-                    <!-- LEFT: STAT ARCS + RADAR -->
-                    <div class="core-left">
-                        <!-- STAT ARCS -->
-                        <div class="panel stat-arcs-panel">
-                            <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                            <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                            <div class="panel-label">ATTRIBUTE MATRIX</div>
-                            <canvas id="stat-arcs-canvas"></canvas>
-                        </div>
-                        <!-- RADAR CHART -->
-                        <div class="panel radar-panel">
-                            <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                            <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                            <div class="panel-label">GOAL TRACKING</div>
-                            <canvas id="radar-canvas"></canvas>
-                            <div class="radar-legend">
-                                <span><i class="leg-dot" style="background:#ff6b6b"></i>Physical</span>
-                                <span><i class="leg-dot" style="background:#4ecdc4"></i>Mental</span>
-                                <span><i class="leg-dot" style="background:#FFD700"></i>Financial</span>
-                                <span><i class="leg-dot" style="background:#a8e6cf"></i>Spiritual</span>
-                                <span><i class="leg-dot" style="background:#EE82EE"></i>Emotional</span>
-                            </div>
-                        </div>
-                    </div>
+      <!-- Active Quests -->
+      <section class="quests-card panel">
+        <div class="panel-title-row">
+          <div class="panel-title"><span class="pt-glyph">◆</span> Active Contracts</div>
+          <button class="view-all-btn" onclick="openOverlay('quests')" id="view-all-quests">VIEW ALL</button>
+        </div>
+        <div id="quest-list" class="quest-list">
+          <div class="quest-empty">NO CONTRACTS LOADED</div>
+        </div>
+      </section>
 
-                    <!-- RIGHT: DAILY QUESTS -->
-                    <div class="core-right">
-                        <div class="panel quests-panel" style="height:100%;">
-                            <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                            <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                            <div class="panel-label">DAILY QUEST LOG</div>
-                            <div id="daily-quest-list" class="quest-list">
-                                <div class="quest-empty">Run Daily Protocol to populate quests.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+      <!-- Market / Treasury -->
+      <section class="market-card panel">
+        <div class="panel-title-row">
+          <div class="panel-title"><span class="pt-glyph">◆</span> Market Place</div>
+          <button class="view-all-btn" onclick="openOverlay('treasury')" id="open-treasury">TREASURY</button>
+        </div>
+        <div class="market-items">
+          <div class="market-item" id="mi-income">
+            <canvas class="potion-canvas" id="potion-0" width="60" height="80"></canvas>
+            <div class="mi-label">Monthly Income</div>
+            <div id="mi-income-val" class="mi-val gold">R 0</div>
+          </div>
+          <div class="market-item" id="mi-runway">
+            <canvas class="potion-canvas" id="potion-1" width="60" height="80"></canvas>
+            <div class="mi-label">Runway</div>
+            <div id="mi-runway-val" class="mi-val cyan">0 mo</div>
+          </div>
+          <div class="market-item" id="mi-score">
+            <canvas class="potion-canvas" id="potion-2" width="60" height="80"></canvas>
+            <div class="mi-label">Frugality</div>
+            <div id="mi-score-val" class="mi-val purple">0/100</div>
+          </div>
+        </div>
+      </section>
 
-                <!-- BOTTOM ROW: Calendar + Trophies -->
-                <div class="bottom-row">
-                    <!-- HABIT CALENDAR -->
-                    <div class="panel cal-panel">
-                        <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                        <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                        <div class="panel-label">HABIT CALENDAR</div>
-                        <div class="cal-header">
-                            <span class="cal-month" id="cal-month">SEPTEMBER 2026</span>
-                            <span class="cal-streak-info">🔥 <span id="cal-streak">0</span> DAY STREAK</span>
-                        </div>
-                        <div class="cal-weekdays">
-                            <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
-                        </div>
-                        <div id="cal-grid" class="cal-grid"></div>
-                        <div class="goal-progress-section">
-                            <div class="gp-labels">
-                                <span class="gp-label-txt">GOAL PROGRESS</span>
-                                <span class="gp-pct" id="gp-pct">0%</span>
-                            </div>
-                            <div class="gp-track">
-                                <div class="gp-fill" id="gp-fill" style="width:0%"></div>
-                            </div>
-                        </div>
-                    </div>
+    </div><!-- /right-col -->
 
-                    <!-- TROPHY SHOWCASE -->
-                    <div class="panel trophy-panel">
-                        <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                        <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                        <div class="panel-label">ACHIEVEMENT SHOWCASE</div>
-                        <div class="trophy-row" id="trophy-row">
-                            <div class="trophy-card locked" id="ach-firstblood">
-                                <div class="trophy-glyph">🏆</div>
-                                <div class="trophy-name">First Blood</div>
-                                <div class="trophy-req">Complete 5 Quests</div>
-                            </div>
-                            <div class="trophy-card locked" id="ach-scholar">
-                                <div class="trophy-glyph">📚</div>
-                                <div class="trophy-name">Knowledge Seeker</div>
-                                <div class="trophy-req">7-Day Streak</div>
-                            </div>
-                            <div class="trophy-card locked" id="ach-iron">
-                                <div class="trophy-glyph">⚔️</div>
-                                <div class="trophy-name">Iron Discipline</div>
-                                <div class="trophy-req">30-Day Streak</div>
-                            </div>
-                            <div class="trophy-card locked" id="ach-boss">
-                                <div class="trophy-glyph">💀</div>
-                                <div class="trophy-name">Boss Slayer</div>
-                                <div class="trophy-req">Complete Boss Quest</div>
-                            </div>
-                            <div class="trophy-card locked" id="ach-apex">
-                                <div class="trophy-glyph">👑</div>
-                                <div class="trophy-name">Apex Legend</div>
-                                <div class="trophy-req">Reach Rank S</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  </main>
 
-                <!-- CONSOLE -->
-                <div class="panel console-panel">
-                    <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                    <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                    <div class="panel-label">J.A.R.V.I.S. CONSOLE</div>
-                    <div id="terminal-logs" class="terminal" aria-live="polite"></div>
-                </div>
-            </div>
+  <!-- ── NAV BAR ────────────────────────────────────────────────── -->
+  <nav class="nav-bar">
+    <button class="nav-btn active" data-view="hud" id="dock-hud">
+      <span class="nav-icon">◈</span>
+      <span class="nav-label">HUNTER CORE</span>
+    </button>
+    <button class="nav-btn" data-view="treasury" id="dock-treasury">
+      <span class="nav-icon">⬡</span>
+      <span class="nav-label">TREASURY</span>
+    </button>
+    <button class="nav-btn" data-view="quests" id="dock-quests">
+      <span class="nav-icon">⚔</span>
+      <span class="nav-label">COMBAT LOG</span>
+    </button>
+    <button class="nav-btn" data-view="intel" id="dock-intel">
+      <span class="nav-icon">◎</span>
+      <span class="nav-label">INTEL</span>
+    </button>
+    <button class="nav-btn" data-view="system" id="dock-system">
+      <span class="nav-icon">⊙</span>
+      <span class="nav-label">SYSTEM</span>
+    </button>
+  </nav>
 
-            <!-- ══ COMBAT LOG TAB (all quests) ══ -->
-            <div class="tab-pane" id="pane-quests" style="display:none;">
-                <div class="panel" style="flex:1;">
-                    <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                    <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                    <div class="panel-label">ACTIVE COMBAT LOG</div>
-                    <div class="quest-filters">
-                        <button class="qfbtn active" data-f="ALL" id="qf-ALL">ALL</button>
-                        <button class="qfbtn" data-f="DAILY" id="qf-DAILY">DAILY</button>
-                        <button class="qfbtn" data-f="CORE" id="qf-CORE">CORE</button>
-                        <button class="qfbtn" data-f="BOSS" id="qf-BOSS">BOSS ☠</button>
-                        <button class="qfbtn" data-f="HABIT" id="qf-HABIT">HABIT</button>
-                    </div>
-                    <div id="all-quests-grid" class="all-quests-grid"></div>
-                </div>
-            </div>
+</div><!-- /app-wrapper -->
 
-            <!-- ══ OBJECTIVES TAB ══ -->
-            <div class="tab-pane" id="pane-goals" style="display:none;">
-                <div class="hud-row" style="gap:1rem;flex:1;">
-                    <div class="panel" style="flex:2;min-width:0;">
-                        <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                        <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                        <div class="panel-label">EXECUTION PLAN</div>
-                        <div class="exec-meta-row">
-                            <span>HUNTER: <b id="plan-hunter">---</b></span>
-                            <span>Q<b id="plan-quarter">---</b></span>
-                            <span>WK<b id="plan-week">---</b></span>
-                        </div>
-                        <div class="ns-box">
-                            <div class="ns-tag">⭐ NORTH STAR OBJECTIVE</div>
-                            <div id="plan-north-star" class="ns-text">Loading...</div>
-                        </div>
-                        <div class="plan-trio">
-                            <div class="plan-col">
-                                <div class="plan-col-title">MONTHLY FOCUS</div>
-                                <ul id="plan-monthly"></ul>
-                            </div>
-                            <div class="plan-col">
-                                <div class="plan-col-title">WEEKLY TARGETS</div>
-                                <ul id="plan-weekly"></ul>
-                            </div>
-                            <div class="plan-col">
-                                <div class="plan-col-title">TODAY'S ACTIONS</div>
-                                <ul id="plan-today"></ul>
-                            </div>
-                        </div>
-                        <div id="goals-backlog" class="goals-backlog"></div>
-                    </div>
-                    <div class="panel" style="flex:1;min-width:280px;">
-                        <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                        <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                        <div class="panel-label">GOALS SETUP</div>
-                        <div class="form-scroll">
-                            <div class="fg"><label class="fl">HUNTER NAME</label><input class="fi" id="inp-name" placeholder="Your name"></div>
-                            <div class="fg"><label class="fl">TARGET YEAR</label><input class="fi" id="inp-year" type="number" placeholder="2026"></div>
-                            <div class="fg"><label class="fl">NORTH STAR</label><textarea class="fi" id="inp-northstar" rows="2" placeholder="Your ultimate objective"></textarea></div>
-                            <div class="form-divider">ADD GOAL</div>
-                            <div class="fg"><label class="fl">TITLE</label><input class="fi" id="b-title" placeholder="e.g. Build wealth"></div>
-                            <div class="fg"><label class="fl">CATEGORY</label>
-                                <select class="fi" id="b-cat">
-                                    <option value="CAREER">CAREER</option>
-                                    <option value="FITNESS">FITNESS</option>
-                                    <option value="FINANCE">FINANCE</option>
-                                    <option value="MINDSET">MINDSET</option>
-                                    <option value="SKILLS">SKILLS</option>
-                                </select>
-                            </div>
-                            <div class="fg"><label class="fl">DESCRIPTION</label><textarea class="fi" id="b-desc" rows="2" placeholder="What success looks like"></textarea></div>
-                            <div class="fg"><label class="fl">SUCCESS METRIC</label><input class="fi" id="b-metric" placeholder="Measurable outcome"></div>
-                            <div class="hud-row" style="gap:0.5rem;">
-                                <div class="fg" style="flex:1"><label class="fl">PRIORITY</label>
-                                    <select class="fi" id="b-priority">
-                                        <option value="1">1 — CRITICAL</option>
-                                        <option value="2">2 — HIGH</option>
-                                        <option value="3" selected>3 — MEDIUM</option>
-                                    </select>
-                                </div>
-                                <div class="fg" style="flex:1"><label class="fl">DEADLINE</label><input class="fi" id="b-deadline" type="date"></div>
-                            </div>
-                            <button class="action-btn secondary-btn" onclick="addGoal()" id="btn-add-goal">+ ADD GOAL</button>
-                            <div class="builder-info">Queued: <b id="b-count">0</b></div>
-                            <div id="b-list" class="b-list"></div>
-                            <button class="action-btn primary-btn" onclick="deployPlan()" id="btn-deploy">⚡ DEPLOY PLAN</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<!-- ═══ OVERLAYS ════════════════════════════════════════════════════ -->
 
-            <!-- ══ INTEL TAB ══ -->
-            <div class="tab-pane" id="pane-intel" style="display:none;">
-                <div class="panel" style="flex:1;">
-                    <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                    <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                    <div class="panel-label">INTELLIGENCE BRIEF</div>
-                    <div id="intel-content" class="intel-content">
-                        <div class="empty-state">No brief available. Trigger from System tab.</div>
-                    </div>
-                </div>
-            </div>
+<!-- TREASURY -->
+<div id="overlay-treasury" class="full-overlay" hidden>
+  <div class="ov-wrap">
+    <div class="ov-head">
+      <button class="ov-back" onclick="closeOverlay('treasury')">← BACK</button>
+      <div class="ov-title">⬡ CAPITAL REACTOR</div>
+      <div class="ov-sub">ZAR Financial Intelligence · Billionaire Allocation Rules</div>
+    </div>
+    <div class="ov-body treasury-body">
 
-            <!-- ══ SYSTEM TAB ══ -->
-            <div class="tab-pane" id="pane-system" style="display:none;">
-                <div class="hud-row" style="gap:1rem;flex:1;">
-                    <div class="panel" style="flex:1;">
-                        <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                        <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                        <div class="panel-label">SYSTEM ORCHESTRATION</div>
-                        <p class="panel-sub">Direct command interface to local system procedures.</p>
-                        <div class="orch-grid">
-                            <button class="orch-btn focus-orch-btn" id="btn-focus" aria-label="Toggle focus session">
-                                <span class="orch-icon">⚡</span>
-                                <span id="focus-btn-text">INITIATE FOCUS SESSION</span>
-                            </button>
-                            <button class="orch-btn" onclick="triggerAction('daily_protocol')" id="btn-daily">
-                                <span class="orch-icon">📋</span>RUN DAILY PROTOCOL
-                            </button>
-                            <button class="orch-btn" onclick="triggerAction('awakening')" id="btn-awakening">
-                                <span class="orch-icon">🌅</span>START AWAKENING
-                            </button>
-                            <button class="orch-btn" onclick="triggerAction('intelligence_brief')" id="btn-intel-btn">
-                                <span class="orch-icon">🔍</span>SCRAPE INTEL BRIEF
-                            </button>
-                            <button class="orch-btn cloud-orch" onclick="triggerAction('cloud_sync')" id="btn-cloud">
-                                <span class="orch-icon">☁️</span>AWS S3 SYNC
-                            </button>
-                        </div>
-                    </div>
-                    <div class="panel" style="flex:1;">
-                        <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                        <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                        <div class="panel-label">SHADOW JOURNAL</div>
-                        <div class="journal-form">
-                            <textarea id="journal-text" class="fi journal-ta" rows="4" placeholder="Log your thoughts, wins, blockers..."></textarea>
-                            <div class="hud-row" style="gap:0.5rem;margin-top:0.5rem;">
-                                <select class="fi" id="journal-mood" style="flex:1">
-                                    <option value="FOCUSED">⚡ FOCUSED</option>
-                                    <option value="PEAK">🔥 PEAK</option>
-                                    <option value="TIRED">😴 TIRED</option>
-                                    <option value="NEUTRAL">😐 NEUTRAL</option>
-                                </select>
-                                <button class="action-btn secondary-btn" onclick="submitJournal()" id="btn-journal">SUBMIT</button>
-                            </div>
-                        </div>
-                        <div id="journal-list" class="journal-list"></div>
-                    </div>
-                </div>
-                <div class="panel" style="margin-top:1rem;">
-                    <div class="panel-corner tl"></div><div class="panel-corner tr"></div>
-                    <div class="panel-corner bl"></div><div class="panel-corner br"></div>
-                    <div class="panel-label">J.A.R.V.I.S. CONSOLE</div>
-                    <div id="terminal-sys" class="terminal" style="height:180px;"></div>
-                </div>
-            </div>
+      <div class="tr-left">
+        <canvas id="reactor-canvas" width="300" height="300"></canvas>
+        <div class="reactor-legend">
+          <div class="rl-item"><div class="rl-dot gold"></div><span>Assets</span></div>
+          <div class="rl-item"><div class="rl-dot cyan"></div><span>Income</span></div>
+          <div class="rl-item"><div class="rl-dot red"></div><span>Liabilities</span></div>
+          <div class="rl-item"><div class="rl-dot dim"></div><span>Waste</span></div>
+        </div>
+        <div class="reactor-stats">
+          <div class="rs-item"><div id="tr-income" class="rs-val gold">R 0</div><div class="rs-lbl">Monthly Income</div></div>
+          <div class="rs-item"><div id="tr-runway" class="rs-val cyan">0 mo</div><div class="rs-lbl">Runway</div></div>
+          <div class="rs-item"><div id="tr-frugality" class="rs-val purple">0/100</div><div class="rs-lbl">Frugality Score</div></div>
+          <div class="rs-item"><div id="tr-ratio" class="rs-val">0%</div><div class="rs-lbl">Kiyosaki Ratio</div></div>
+        </div>
+      </div>
 
-        </div><!-- end content-viewport -->
-    </main><!-- end command-center -->
-</div><!-- end hud-shell -->
+      <div class="tr-right">
+        <div class="tr-section">
+          <div class="tr-sec-title">LOG TRANSACTION</div>
+          <input class="tr-input" id="tr-amount" type="number" placeholder="Amount (R)"/>
+          <input class="tr-input" id="tr-desc"   type="text"   placeholder="Description"/>
+          <select class="tr-select" id="tr-type">
+            <option value="sustenance">Sustenance (Needs)</option>
+            <option value="asset">Asset (Investment)</option>
+            <option value="liability">Liability (Debt)</option>
+            <option value="leisure">Leisure (Wants)</option>
+          </select>
+          <select class="tr-select" id="tr-direction">
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+          <button class="tr-btn" id="tr-submit-btn" onclick="logTransaction()">LOG TRANSACTION</button>
+        </div>
 
+        <div class="tr-section">
+          <div class="tr-sec-title">INCOME BASELINE</div>
+          <input class="tr-input" id="tr-income-input" type="number" placeholder="Monthly Income (R)"/>
+          <button class="tr-btn secondary" onclick="updateBudget()">UPDATE BUDGET</button>
+        </div>
+
+        <div class="tr-section">
+          <div class="tr-sec-title">AI FIRST-PRINCIPLES AUDIT</div>
+          <button class="tr-btn" onclick="runAudit()">⚡ RUN AUDIT</button>
+          <div id="audit-console" class="audit-console"><span class="dim-text">Awaiting audit command...</span></div>
+        </div>
+
+        <div class="tr-section">
+          <div class="tr-sec-title">OPPORTUNITY SCANNER</div>
+          <button class="tr-btn secondary" onclick="scanOpportunities()">◎ SCAN MARKET NETWORKS</button>
+          <div id="opp-feed" class="opp-feed"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- QUESTS -->
+<div id="overlay-quests" class="full-overlay" hidden>
+  <div class="ov-wrap">
+    <div class="ov-head">
+      <button class="ov-back" onclick="closeOverlay('quests')">← BACK</button>
+      <div class="ov-title">⚔ COMBAT LOG</div>
+      <div class="ov-sub">Active Contracts &amp; Missions</div>
+    </div>
+    <div class="ov-body quests-body">
+      <div class="qf-bar">
+        <button class="qf-btn active" data-filter="ALL">ALL</button>
+        <button class="qf-btn" data-filter="daily">DAILY</button>
+        <button class="qf-btn" data-filter="boss">BOSS</button>
+        <button class="qf-btn" data-filter="habit">HABIT</button>
+      </div>
+      <div id="all-quest-grid" class="all-quest-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- INTEL -->
+<div id="overlay-intel" class="full-overlay" hidden>
+  <div class="ov-wrap">
+    <div class="ov-head">
+      <button class="ov-back" onclick="closeOverlay('intel')">← BACK</button>
+      <div class="ov-title">◎ INTELLIGENCE NETWORK</div>
+      <div class="ov-sub">Market Surveillance &amp; Opportunity Feed</div>
+    </div>
+    <div class="ov-body intel-body">
+      <canvas id="intel-globe-canvas"></canvas>
+      <div class="intel-right">
+        <div class="intel-title">LIVE INTEL FEED</div>
+        <div id="intel-feed" class="intel-feed"><div class="dim-text">NO INTELLIGENCE DATA</div></div>
+        <button class="tr-btn secondary" onclick="refreshIntelFeed()" style="margin-top:12px">⟳ REFRESH FEED</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SYSTEM -->
+<div id="overlay-system" class="full-overlay" hidden>
+  <div class="ov-wrap">
+    <div class="ov-head">
+      <button class="ov-back" onclick="closeOverlay('system')">← BACK</button>
+      <div class="ov-title">⊙ SYSTEM STATUS</div>
+      <div class="ov-sub">Neural Module Grid</div>
+    </div>
+    <div class="ov-body system-body">
+      <div id="sys-grid" class="sys-grid"></div>
+    </div>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

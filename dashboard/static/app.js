@@ -1,1099 +1,1262 @@
 'use strict';
+/* ═══════════════════════════════════════════════════════════════════
+   APEX GHOST — SOLO LEVELING ENGINE v2.0
+   Hooded Avatar · Radar Chart · Pixel Grid · Potion Market
+   Star Background · Boot Sigil · Level-Up Cinematic
+   ═══════════════════════════════════════════════════════════════════ */
 
-// ═══════════════════════════════════════════════════
-// APEX GHOST — NEURAL ENGINE v4.2.1
-// ═══════════════════════════════════════════════════
-
-// ── GLOBAL STATE ──
-let focusActive = false;
-let lastLogIdx  = 0;
-let allQuests   = [];
-let activeFilter = 'ALL';
-let builderGoals = [];
-let prevLevel = 1;
-let audioCtx  = null;
-
-// Canvas animation state
-let bgScene, bgCamera, bgRenderer, bgUniforms;
-let avScene, avCamera, avRenderer;
-let avParticles, avParticlePos;
-let runeAngle = 0;
-let miniRuneAngle = 0;
-let dataStreamCtx, dataStreamCols = [];
-
-// XP animation
-let xpDisplayed = 0, xpTarget = 0, xpMax = 1000;
-let xpShimmerX = -1, shimmerDir = 1;
-
-// Radar animation
-let radarDisplayed = [0,0,0,0,0];
-let radarTarget    = [30,40,25,20,35];
-const RADAR_LABELS = ['Physical','Mental','Financial','Spiritual','Emotional'];
-const RADAR_COLORS = ['#ff6b6b','#4ecdc4','#FFD700','#a8e6cf','#EE82EE'];
-
-// Stat arcs animation
-let attrDisplayed = { str:0, int:0, agi:0, dis:0 };
-let attrTarget    = { str:10, int:10, agi:10, dis:10 };
-
-// Mouse tracking
-let mouseX = 0.5, mouseY = 0.5;
-
-// ═══════════════════════════════════════════════════
-// BOOT
-// ═══════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', () => {
-    initBgShader();
-    initAvatarCanvas();
-    initDataStream();
-    runBootSequence().then(() => {
-        startLiveData();
-        requestAnimationFrame(masterLoop);
-        initControlCenter();
-        initMouseGlow();
-        initClock();
-        renderCalendar();
-        initNavButtons();
-    });
-});
-
-async function runBootSequence() {
-    const lines = [
-        '> APEX GHOST NEURAL OS v4.2.1...',
-        '> Loading cognitive modules...',
-        '> Syncing memory stack...',
-        '> Authenticating hunter profile...',
-        '> Neural interface established.',
-        '> SYSTEM ONLINE.',
-    ];
-    const container = document.getElementById('boot-lines');
-    const bar = document.getElementById('boot-progress');
-
-    for (let i = 0; i < lines.length; i++) {
-        await typeBootLine(container, lines[i], 22);
-        bar.style.width = `${((i + 1) / lines.length) * 100}%`;
-        await delay(120);
-    }
-    await delay(500);
-    const overlay = document.getElementById('boot-overlay');
-    overlay.classList.add('fade-out');
-    await delay(900);
-    overlay.style.display = 'none';
-    playUISound('boot');
-}
-
-function typeBootLine(container, text, speed) {
-    return new Promise(resolve => {
-        const div = document.createElement('div');
-        div.className = 'boot-line boot-cursor';
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
-        let i = 0;
-        const t = setInterval(() => {
-            div.textContent = text.slice(0, ++i);
-            if (i >= text.length) {
-                clearInterval(t);
-                div.classList.remove('boot-cursor');
-                resolve();
-            }
-        }, speed);
-    });
-}
+const G = {
+    player:      null,
+    quests:      [],
+    prevLevel:   0,
+    mouseX:      0.5,
+    mouseY:      0.5,
+    radarValues: { STR:10, INT:10, AGI:10, DIS:10, FOC:10 },
+    audioCtx:    null,
+    currentView: 'hud',
+    treasuryData:null,
+    logIdx:      0,
+    potionColors:['#ffd700','#00e5ff','#bb66ff'],
+};
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
-// ═══════════════════════════════════════════════════
-// MASTER 60 FPS LOOP
-// ═══════════════════════════════════════════════════
-let lastTs = 0;
-function masterLoop(ts) {
-    const dt = Math.min(ts - lastTs, 50);
-    lastTs = ts;
-
-    updateBgShader(ts);
-    updateAvatarCanvas(ts);
-    updateRuneRing(ts);
-    updateMiniRuneRing(ts);
-    updateDataStream(ts);
-    animXP(dt);
-    animRadar(dt);
-    animStatArcs(dt);
-
+/* ═══════════════════════════════════════════════════════════════════
+   BOOT SEQUENCE
+   ═══════════════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', async () => {
+    initBgStars();
+    initMouseGlow();
+    await runBoot();
+    initAvatar();
+    initRadar();
+    buildHealthGrid();
+    drawPotions();
+    initNavDock();
+    initQuestFilters();
+    initClock();
+    startDataLoop();
     requestAnimationFrame(masterLoop);
+});
+
+async function runBoot() {
+    const bc = document.getElementById('boot-canvas');
+    if (bc) animBootSigil(bc);
+
+    const lines = [
+        '> APEX GHOST PROTOCOL v5.0...',
+        '> Loading shadow attribute matrix...',
+        '> Syncing quest engine...',
+        '> Calibrating capital reactor...',
+        '> Intel network handshake...',
+        '> Hunter profile loaded.',
+        '> ◈ SYSTEM AWAKENED.',
+    ];
+    const log = document.getElementById('boot-log');
+    const bar = document.getElementById('boot-bar');
+    const pct = document.getElementById('boot-pct');
+    if (!log) return;
+
+    for (let i = 0; i < lines.length; i++) {
+        const d = document.createElement('div');
+        d.textContent = lines[i];
+        log.appendChild(d);
+        log.scrollTop = log.scrollHeight;
+        bar.style.width = Math.round((i+1)/lines.length*100) + '%';
+        pct.textContent = Math.round((i+1)/lines.length*100) + '%';
+        await delay(180 + Math.random()*120);
+    }
+    pct.textContent = 'ONLINE';
+    await delay(500);
+    playBootSound();
+    const ov = document.getElementById('boot-overlay');
+    ov.classList.add('fade-out');
+    await delay(900);
+    ov.style.display = 'none';
 }
 
-// ═══════════════════════════════════════════════════
-// BACKGROUND — SWIRLING VOID PORTAL (Three.js WebGL)
-// ═══════════════════════════════════════════════════
-function initBgShader() {
+/* Boot sigil canvas */
+function animBootSigil(canvas) {
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width/2, cy = canvas.height/2;
+    let angle = 0;
+    function draw() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        // Outer glow ring
+        for (let r = 0; r < 3; r++) {
+            const rad = 80 - r*20;
+            ctx.save();
+            ctx.strokeStyle = `rgba(155,51,255,${0.15 + r*0.15})`;
+            ctx.lineWidth = 1.5 - r*0.4;
+            ctx.shadowBlur = 15; ctx.shadowColor = '#7b00cc';
+            ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.stroke();
+            ctx.restore();
+        }
+        // Rotating rune ring
+        for (let i = 0; i < 8; i++) {
+            const a = angle + (i/8)*Math.PI*2;
+            const x = cx + Math.cos(a)*70, y = cy + Math.sin(a)*70;
+            ctx.save();
+            ctx.fillStyle = `rgba(187,102,255,${0.5+Math.sin(angle*2+i)*0.3})`;
+            ctx.shadowBlur = 8; ctx.shadowColor = '#9d33ff';
+            ctx.fillRect(x-2,y-2,4,4);
+            ctx.restore();
+        }
+        // Counter ring
+        for (let i = 0; i < 6; i++) {
+            const a = -angle*1.5 + (i/6)*Math.PI*2;
+            const x = cx + Math.cos(a)*50, y = cy + Math.sin(a)*50;
+            ctx.save();
+            ctx.fillStyle = `rgba(0,229,255,${0.4+Math.sin(-angle*2+i)*0.3})`;
+            ctx.shadowBlur = 6; ctx.shadowColor = '#00e5ff';
+            ctx.beginPath(); ctx.arc(x,y,2,0,Math.PI*2); ctx.fill();
+            ctx.restore();
+        }
+        // Center glyph
+        ctx.save();
+        ctx.font = 'bold 28px Cinzel Decorative, serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#d499ff';
+        ctx.shadowBlur = 20; ctx.shadowColor = '#7b00cc';
+        ctx.fillText('◈', cx, cy);
+        ctx.restore();
+        // Star sparks
+        for (let i = 0; i < 5; i++) {
+            const a = angle*0.7 + i*(Math.PI*2/5);
+            const r2 = 90 + Math.sin(angle*3+i)*5;
+            ctx.save();
+            ctx.fillStyle = `rgba(255,215,0,${0.3+Math.sin(angle*4+i)*0.2})`;
+            ctx.shadowBlur = 10; ctx.shadowColor = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2, 1.5,0,Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+        }
+        angle += 0.025;
+        if (document.getElementById('boot-overlay')?.style.display !== 'none') {
+            requestAnimationFrame(draw);
+        }
+    }
+    draw();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   BACKGROUND — STAR FIELD (Canvas 2D, no Three.js needed for bg)
+   ═══════════════════════════════════════════════════════════════════ */
+let bgCtx, bgStars = [], bgW, bgH, bgTime = 0;
+
+function initBgStars() {
     const canvas = document.getElementById('bg-canvas');
-    bgRenderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false });
-    bgRenderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-    resizeBgRenderer();
-
-    bgScene  = new THREE.Scene();
-    bgCamera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
-
-    bgUniforms = {
-        time:       { value: 0 },
-        resolution: { value: new THREE.Vector2(innerWidth, innerHeight) },
-        mouse:      { value: new THREE.Vector2(0.5, 0.5) }
-    };
-
-    const frag = `
-        precision mediump float;
-        uniform float time;
-        uniform vec2 resolution;
-        uniform vec2 mouse;
-        varying vec2 vUv;
-
-        float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5); }
-        float noise(vec2 p) {
-            vec2 i = floor(p), f = fract(p);
-            f = f*f*(3.0-2.0*f);
-            return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
-                       mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
-        }
-
-        void main() {
-            vec2 uv = vUv;
-            vec2 center = vec2(0.5) + (mouse - 0.5) * 0.08;
-            vec2 p = uv - center;
-            float dist = length(p);
-            float angle = atan(p.y, p.x);
-            float t = time * 0.12;
-
-            // Swirling vortex
-            float swirl = angle + dist * 4.0 - t * 1.5;
-            float vortex = sin(swirl * 4.0) * 0.5 + 0.5;
-            vortex *= 1.0 - smoothstep(0.0, 0.7, dist);
-
-            // Nebula noise
-            float n1 = noise(uv * 3.0 + vec2(t, t * 0.6)) * 0.6;
-            float n2 = noise(uv * 6.0 + vec2(-t * 1.2, t * 0.4)) * 0.4;
-            float nebula = (n1 + n2) * (1.0 - smoothstep(0.2, 0.9, dist));
-
-            vec3 base    = vec3(0.012, 0.0, 0.027);
-            vec3 vortexC = vec3(0.34, 0.0, 0.66) * vortex * 0.55;
-            vec3 nebulaC = vec3(0.10, 0.0, 0.25) * nebula * 0.5;
-            vec3 iceCore = vec3(0.0, 0.38, 0.5) * (1.0 - smoothstep(0.0, 0.25, dist)) * 0.12;
-
-            // Subtle grid
-            vec2 grid = fract(uv * 28.0);
-            float gLine = max(step(0.97, grid.x), step(0.97, grid.y));
-            vec3 gridC = vec3(0.13, 0.0, 0.26) * gLine * 0.25;
-
-            vec3 col = base + vortexC + nebulaC + iceCore + gridC;
-            float vignette = 1.0 - smoothstep(0.35, 1.1, dist * 1.2);
-            col *= vignette;
-
-            gl_FragColor = vec4(col, 1.0);
-        }
-    `;
-    const vert = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position,1.0); }`;
-    const geo = new THREE.PlaneGeometry(2,2);
-    const mat = new THREE.ShaderMaterial({ uniforms: bgUniforms, vertexShader: vert, fragmentShader: frag });
-    bgScene.add(new THREE.Mesh(geo, mat));
-
-    window.addEventListener('resize', resizeBgRenderer);
+    if (!canvas) return;
+    bgCtx = canvas.getContext('2d');
+    resizeBg(canvas);
+    window.addEventListener('resize', () => resizeBg(canvas));
 }
 
-function resizeBgRenderer() {
-    if (!bgRenderer) return;
-    bgRenderer.setSize(innerWidth, innerHeight);
-    if (bgUniforms) bgUniforms.resolution.value.set(innerWidth, innerHeight);
+function resizeBg(canvas) {
+    bgW = canvas.width  = innerWidth;
+    bgH = canvas.height = innerHeight;
+    bgStars = Array.from({length: 220}, () => ({
+        x:     Math.random() * bgW,
+        y:     Math.random() * bgH,
+        r:     0.3 + Math.random() * 1.4,
+        speed: 0.05 + Math.random() * 0.15,
+        phase: Math.random() * Math.PI * 2,
+        color: Math.random() > 0.85 ? '#bb66ff' : Math.random() > 0.7 ? '#6633aa' : '#ffffff',
+    }));
 }
 
-function updateBgShader(ts) {
-    if (!bgRenderer) return;
-    bgUniforms.time.value = ts * 0.001;
-    bgUniforms.mouse.value.set(mouseX, mouseY);
-    bgRenderer.render(bgScene, bgCamera);
+function drawBgStars(ts) {
+    if (!bgCtx) return;
+    bgTime = ts * 0.001;
+    // Deep purple gradient base
+    const grad = bgCtx.createRadialGradient(bgW*0.5,bgH*0.5,0, bgW*0.5,bgH*0.5, bgW*0.75);
+    grad.addColorStop(0,   '#130020');
+    grad.addColorStop(0.45,'#0d0018');
+    grad.addColorStop(0.85,'#090012');
+    grad.addColorStop(1,   '#070010');
+    bgCtx.fillStyle = grad;
+    bgCtx.fillRect(0,0,bgW,bgH);
+
+    // Subtle central nebula glow
+    const nebGrad = bgCtx.createRadialGradient(bgW*0.5,bgH*0.45,0,bgW*0.5,bgH*0.45,bgW*0.35);
+    nebGrad.addColorStop(0,   'rgba(80,0,160,0.18)');
+    nebGrad.addColorStop(0.5, 'rgba(50,0,100,0.08)');
+    nebGrad.addColorStop(1,   'transparent');
+    bgCtx.fillStyle = nebGrad;
+    bgCtx.fillRect(0,0,bgW,bgH);
+
+    // Stars
+    bgStars.forEach(s => {
+        const a = 0.35 + Math.sin(bgTime*s.speed + s.phase) * 0.35;
+        bgCtx.save();
+        bgCtx.globalAlpha = a;
+        bgCtx.fillStyle = s.color;
+        bgCtx.shadowBlur = s.r > 1 ? 6 : 0;
+        bgCtx.shadowColor = s.color;
+        bgCtx.beginPath();
+        bgCtx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        bgCtx.fill();
+        bgCtx.restore();
+    });
+
+    // Mouse-reactive glow
+    const mgx = G.mouseX * bgW, mgy = G.mouseY * bgH;
+    const mg = bgCtx.createRadialGradient(mgx,mgy,0, mgx,mgy, 280);
+    mg.addColorStop(0,   'rgba(100,0,200,0.1)');
+    mg.addColorStop(1,   'transparent');
+    bgCtx.fillStyle = mg;
+    bgCtx.fillRect(0,0,bgW,bgH);
 }
 
-// ═══════════════════════════════════════════════════
-// AVATAR (Three.js — hologram + particles + rune)
-// ═══════════════════════════════════════════════════
-function initAvatarCanvas() {
+/* ═══════════════════════════════════════════════════════════════════
+   HOODED AVATAR (Canvas 2D)
+   ═══════════════════════════════════════════════════════════════════ */
+let avCtx, avTime = 0, avParticles = [];
+
+function initAvatar() {
     const canvas = document.getElementById('avatar-canvas');
     if (!canvas) return;
-
-    avRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    avRenderer.setClearColor(0x000000, 0);
-    avRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    const W = canvas.clientWidth || 290, H = canvas.clientHeight || 400;
-    avRenderer.setSize(W, H);
-
-    avScene  = new THREE.Scene();
-    avCamera = new THREE.PerspectiveCamera(55, W/H, 0.1, 100);
-    avCamera.position.set(0, 0.2, 4);
-
-    // Hologram plane — character display
-    const vShad = `
-        uniform float time;
-        varying vec2 vUv;
-        varying float vEdge;
-        void main() {
-            vUv = uv;
-            vec3 pos = position;
-            pos.z += sin(pos.x * 5.0 + time) * 0.025 + sin(pos.y * 8.0 + time*1.3) * 0.018;
-            vEdge = pow(abs(uv.x - 0.5) * 2.0, 3.0);
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-        }
-    `;
-    const fShad = `
-        uniform float time;
-        uniform float focusBoost;
-        varying vec2 vUv;
-        varying float vEdge;
-        void main() {
-            float pulse = sin(time * 2.0) * 0.5 + 0.5;
-            float scanY  = mod(vUv.y * 60.0 + time * 4.0, 1.0);
-            float scan   = step(0.92, scanY) * 0.12;
-            float flicker = sin(time * 30.0) * 0.02;
-            float holo    = vEdge * (0.7 + pulse * 0.3) + 0.06 + scan + flicker;
-            vec3 evColor  = vec3(0.54, 0.0, 1.0);
-            vec3 iceColor = vec3(0.0, 0.96, 1.0);
-            vec3 col = mix(evColor, iceColor, vEdge * 0.4) * (vEdge * 1.6 + 0.25);
-            col += evColor * pulse * (0.25 + focusBoost * 0.4);
-            gl_FragColor = vec4(col, holo * (0.75 + focusBoost * 0.2));
-        }
-    `;
-    const planeGeo = new THREE.PlaneGeometry(2.6, 3.8, 40, 60);
-    const planeMat = new THREE.ShaderMaterial({
-        uniforms: { time: {value:0}, focusBoost: {value:0} },
-        vertexShader: vShad, fragmentShader: fShad,
-        transparent: true, side: THREE.DoubleSide, depthWrite: false
-    });
-    const holoMesh = new THREE.Mesh(planeGeo, planeMat);
-    holoMesh.name = 'holo';
-    holoMesh.position.y = 0.15;
-    avScene.add(holoMesh);
-
-    // Rune rings
-    const mkTorus = (r, tube, col, opacity) => {
-        const m = new THREE.Mesh(
-            new THREE.TorusGeometry(r, tube, 8, 80),
-            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity })
-        );
-        avScene.add(m); return m;
-    };
-    mkTorus(1.5, 0.018, 0x8B00FF, 0.75).name = 'ring1';
-    mkTorus(1.15, 0.01, 0x00F5FF, 0.45).name = 'ring2';
-    mkTorus(0.85, 0.008, 0x8B00FF, 0.3).name = 'ring3';
-
-    // Particles
-    const N = 180;
-    avParticlePos = new Float32Array(N * 3);
-    const pColors = new Float32Array(N * 3), pVels = [];
-    for (let i = 0; i < N; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const r = 0.7 + Math.random() * 1.1;
-        avParticlePos[i*3]   = Math.cos(a) * r;
-        avParticlePos[i*3+1] = (Math.random() - 0.5) * 4.0;
-        avParticlePos[i*3+2] = Math.sin(a) * r;
-        const c = new THREE.Color().setHSL(0.76 + (Math.random()-0.5)*0.08, 1, 0.62);
-        pColors[i*3]=c.r; pColors[i*3+1]=c.g; pColors[i*3+2]=c.b;
-        pVels.push({ vy: 0.004 + Math.random()*0.007, vx: (Math.random()-0.5)*0.002 });
-    }
-    const pGeo = new THREE.BufferGeometry();
-    pGeo.setAttribute('position', new THREE.BufferAttribute(avParticlePos, 3));
-    pGeo.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
-    avParticles = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.05, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false }));
-    avParticles._vels = pVels;
-    avScene.add(avParticles);
-
-    canvas.addEventListener('mouseenter', () => { const h = avScene.getObjectByName('holo'); if(h) h.material.uniforms.focusBoost.value = 0.6; });
-    canvas.addEventListener('mouseleave', () => { const h = avScene.getObjectByName('holo'); if(h) h.material.uniforms.focusBoost.value = focusActive ? 0.4 : 0; });
+    avCtx = canvas.getContext('2d');
+    avParticles = Array.from({length:30}, () => ({
+        angle: Math.random()*Math.PI*2,
+        radius: 50 + Math.random()*30,
+        speed: 0.008 + Math.random()*0.012,
+        size: 1 + Math.random()*2,
+        phase: Math.random()*Math.PI*2,
+    }));
 }
 
-function updateAvatarCanvas(ts) {
-    if (!avRenderer) return;
-    const t = ts * 0.001;
-
-    const holo = avScene.getObjectByName('holo');
-    if (holo) { holo.material.uniforms.time.value = t; holo.material.uniforms.focusBoost.value = focusActive ? 0.45 : 0; }
-
-    const r1 = avScene.getObjectByName('ring1'); if(r1) r1.rotation.z += 0.004;
-    const r2 = avScene.getObjectByName('ring2'); if(r2) { r2.rotation.z -= 0.006; r2.rotation.x = Math.sin(t*0.4)*0.3; }
-    const r3 = avScene.getObjectByName('ring3'); if(r3) r3.rotation.y += 0.008;
-
-    if (avParticles) {
-        for (let i = 0; i < avParticles._vels.length; i++) {
-            avParticlePos[i*3+1] += avParticles._vels[i].vy;
-            avParticlePos[i*3]   += avParticles._vels[i].vx;
-            if (avParticlePos[i*3+1] > 2.2) {
-                avParticlePos[i*3+1] = -2.2;
-                const a = Math.random()*Math.PI*2, r = 0.7+Math.random()*1.1;
-                avParticlePos[i*3] = Math.cos(a)*r;
-                avParticlePos[i*3+2] = Math.sin(a)*r;
-            }
-        }
-        avParticles.geometry.attributes.position.needsUpdate = true;
-    }
-
-    // Parallax from mouse
-    avCamera.position.x = (mouseX - 0.5) * 0.4;
-    avCamera.position.y = (mouseY - 0.5) * -0.2 + 0.2;
-    avCamera.lookAt(0, 0.1, 0);
-
-    avRenderer.render(avScene, avCamera);
-}
-
-// ═══════════════════════════════════════════════════
-// RUNE RING CANVAS (sidebar overlay)
-// ═══════════════════════════════════════════════════
-const RUNES = ['ᚠ','ᚢ','ᚦ','ᚨ','ᚱ','ᚲ','ᚷ','ᚹ','ᚺ','ᚾ','ᛁ','ᛃ','ᛇ','ᛈ'];
-
-function updateRuneRing(ts) {
-    const canvas = document.getElementById('rune-canvas');
-    if (!canvas) return;
-    const parent = canvas.parentElement;
-    const W = parent.clientWidth * 0.8, H = parent.clientHeight * 0.8;
-    if (canvas.width !== Math.round(W)) { canvas.width = Math.round(W); canvas.height = Math.round(H); }
-    const ctx = canvas.getContext('2d');
-    const cx = W/2, cy = H/2, r = Math.min(W,H) * 0.44;
-    runeAngle += 0.003;
+function drawAvatar(ts) {
+    const ctx = avCtx;
+    if (!ctx) return;
+    avTime = ts * 0.001;
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    const cx = W/2, cy = H/2;
     ctx.clearRect(0,0,W,H);
 
-    const pulse = Math.sin(ts * 0.0018) * 0.5 + 0.5;
+    // Aura rings
+    const pulseR = 72 + Math.sin(avTime*1.2)*5;
+    for (let i = 0; i < 4; i++) {
+        const r = pulseR + i*12;
+        const alpha = (0.35 - i*0.07) * (1 + Math.sin(avTime*1.5)*0.2);
+        ctx.save();
+        ctx.strokeStyle = `rgba(${i<2?'155,51,255':'100,0,200'},${alpha})`;
+        ctx.lineWidth = 2 - i*0.4;
+        ctx.shadowBlur = 15; ctx.shadowColor = '#7b00cc';
+        ctx.beginPath(); ctx.arc(cx, cy+12, r, 0, Math.PI*2); ctx.stroke();
+        ctx.restore();
+    }
 
-    // Outer ring
-    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
-    ctx.strokeStyle = `rgba(139,0,255,${0.4 + pulse*0.3})`; ctx.lineWidth = 1.5; ctx.stroke();
+    // Floor glow ellipse
+    ctx.save();
+    const floorGrad = ctx.createRadialGradient(cx,cy+62,0, cx,cy+62,55);
+    floorGrad.addColorStop(0,'rgba(155,51,255,0.25)');
+    floorGrad.addColorStop(1,'transparent');
+    ctx.fillStyle = floorGrad;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy+65, 54, 16, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
 
-    // Energy ring
-    const grad = ctx.createLinearGradient(cx-r,cy,cx+r,cy);
-    grad.addColorStop(0,'rgba(139,0,255,0)');
-    grad.addColorStop(0.5,'rgba(0,245,255,0.15)');
-    grad.addColorStop(1,'rgba(139,0,255,0)');
-    ctx.strokeStyle = grad; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(cx,cy,r*0.88,runeAngle,runeAngle+Math.PI*0.8); ctx.stroke();
+    // ── Hooded figure silhouette ──
+    ctx.save();
+    ctx.shadowBlur = 22; ctx.shadowColor = '#9d33ff';
 
-    // Inner ring
-    ctx.beginPath(); ctx.arc(cx,cy,r*0.72,0,Math.PI*2);
-    ctx.strokeStyle = `rgba(0,245,255,${0.15 + pulse*0.15})`; ctx.lineWidth = 0.8; ctx.stroke();
+    // Main body gradient fill
+    const bodyGrad = ctx.createLinearGradient(cx-40, cy-70, cx+40, cy+65);
+    bodyGrad.addColorStop(0,   '#1a003a');
+    bodyGrad.addColorStop(0.3, '#220050');
+    bodyGrad.addColorStop(0.7, '#1a003a');
+    bodyGrad.addColorStop(1,   '#110025');
 
-    // Rune symbols
-    const fsize = Math.round(Math.min(W,H)*0.09);
-    ctx.font = `${fsize}px serif`;
+    // Hood (head)
+    ctx.beginPath();
+    ctx.arc(cx, cy-48, 28, 0, Math.PI*2);
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+
+    // Hood outer (wider at top)
+    ctx.beginPath();
+    ctx.ellipse(cx, cy-44, 36, 34, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Shoulders + cloak body
+    ctx.beginPath();
+    ctx.moveTo(cx-52, cy+65);           // bottom-left hem
+    ctx.quadraticCurveTo(cx-60, cy-10, cx-38, cy-38);  // left edge
+    ctx.quadraticCurveTo(cx-22, cy-55, cx, cy-72);     // left shoulder to hood top
+    ctx.quadraticCurveTo(cx+22, cy-55, cx+38, cy-38);  // right shoulder
+    ctx.quadraticCurveTo(cx+60, cy-10, cx+52, cy+65);  // right edge
+    ctx.closePath();
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+
+    // Cloak border glow (outline)
+    ctx.strokeStyle = `rgba(155,51,255,${0.55 + Math.sin(avTime*1.8)*0.2})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    // Face shadow / void face
+    ctx.save();
+    const faceGrad = ctx.createRadialGradient(cx, cy-44, 2, cx, cy-44, 20);
+    faceGrad.addColorStop(0, 'rgba(0,0,0,0.95)');
+    faceGrad.addColorStop(0.7,'rgba(10,0,22,0.8)');
+    faceGrad.addColorStop(1, 'rgba(10,0,22,0)');
+    ctx.fillStyle = faceGrad;
+    ctx.beginPath(); ctx.ellipse(cx, cy-42, 18, 16, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+    // Glowing eyes
+    const eyePulse = 0.7 + Math.sin(avTime*2.5)*0.3;
+    [[cx-7, cy-46],[cx+7, cy-46]].forEach(([ex,ey]) => {
+        ctx.save();
+        ctx.fillStyle = `rgba(187,102,255,${eyePulse})`;
+        ctx.shadowBlur = 12; ctx.shadowColor = '#bb66ff';
+        ctx.beginPath(); ctx.ellipse(ex, ey, 3, 2, 0, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    });
+
+    // Chest rune / sigil
+    ctx.save();
+    ctx.font = `${14 + Math.sin(avTime*1.5)*1}px Cinzel Decorative, serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    RUNES.slice(0,10).forEach((rune, i) => {
-        const a = runeAngle + (i/10)*Math.PI*2;
-        const rx = cx + Math.cos(a)*r*1.05, ry = cy + Math.sin(a)*r*1.05;
-        const alpha = 0.35 + pulse * 0.45;
-        ctx.fillStyle = `rgba(160,32,240,${alpha.toFixed(2)})`;
-        ctx.fillText(rune, rx, ry);
-    });
-    RUNES.slice(0,6).forEach((rune,i) => {
-        const a = -runeAngle * 1.5 + (i/6)*Math.PI*2;
-        const rx = cx+Math.cos(a)*r*0.6, ry = cy+Math.sin(a)*r*0.6;
-        ctx.fillStyle = `rgba(0,245,255,${(0.2+pulse*0.2).toFixed(2)})`;
-        ctx.font = `${Math.round(fsize*0.6)}px serif`;
-        ctx.fillText(rune, rx, ry);
-    });
-}
+    ctx.fillStyle = `rgba(200,120,255,${0.5+Math.sin(avTime*2)*0.3})`;
+    ctx.shadowBlur = 15; ctx.shadowColor = '#9d33ff';
+    ctx.fillText('◈', cx, cy+5);
+    ctx.restore();
 
-// ── Mini rune ring in header
-function updateMiniRuneRing(ts) {
-    const c = document.getElementById('rune-ring-mini');
-    if (!c) return;
-    const ctx = c.getContext('2d');
-    const W=c.width, H=c.height, cx=W/2, cy=H/2, r=W*0.36;
-    miniRuneAngle += 0.004;
-    ctx.clearRect(0,0,W,H);
-    const pulse = Math.sin(ts*0.002)*0.5+0.5;
-    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
-    ctx.strokeStyle=`rgba(139,0,255,${0.5+pulse*0.3})`; ctx.lineWidth=1.2; ctx.stroke();
-    ctx.font = `${Math.round(W*0.18)}px serif`;
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    RUNES.slice(0,6).forEach((rune,i) => {
-        const a = miniRuneAngle + (i/6)*Math.PI*2;
-        const alpha = 0.4 + pulse*0.4;
-        ctx.fillStyle = `rgba(160,32,240,${alpha.toFixed(2)})`;
-        ctx.fillText(rune, cx+Math.cos(a)*r, cy+Math.sin(a)*r);
-    });
-    ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2);
-    ctx.fillStyle = `rgba(0,245,255,${(0.7+pulse*0.3).toFixed(2)})`; ctx.fill();
-}
-
-// ═══════════════════════════════════════════════════
-// DATA STREAM CANVAS (sidebar background)
-// ═══════════════════════════════════════════════════
-function initDataStream() {
-    const c = document.getElementById('data-stream-canvas');
-    if (!c) return;
-    c.width  = c.offsetWidth  || 290;
-    c.height = c.offsetHeight || 800;
-    dataStreamCtx = c.getContext('2d');
-    const cols = Math.floor(c.width / 12);
-    for (let i=0; i<cols; i++) {
-        dataStreamCols.push({ x: i*12, y: Math.random()*c.height, speed: 0.5+Math.random()*1.5 });
-    }
-}
-
-let dsLastTs = 0;
-function updateDataStream(ts) {
-    const c = document.getElementById('data-stream-canvas');
-    if (!c || !dataStreamCtx) return;
-    if (ts - dsLastTs < 60) return;
-    dsLastTs = ts;
-    const W=c.width, H=c.height;
-    dataStreamCtx.fillStyle = 'rgba(3,0,7,0.12)';
-    dataStreamCtx.fillRect(0,0,W,H);
-    dataStreamCtx.font = '11px Share Tech Mono, monospace';
-    dataStreamCtx.fillStyle = 'rgba(139,0,255,0.9)';
-    dataStreamCols.forEach(col => {
-        const char = Math.random() > 0.5
-            ? String.fromCharCode(0x30A0 + Math.floor(Math.random()*96))
-            : Math.floor(Math.random()*16).toString(16).toUpperCase();
-        dataStreamCtx.fillText(char, col.x, col.y);
-        col.y += col.speed * 12;
-        if (col.y > H) { col.y = 0; col.speed = 0.5 + Math.random()*1.5; }
+    // Orbiting particles
+    avParticles.forEach(p => {
+        p.angle += p.speed;
+        const x = cx + Math.cos(p.angle) * p.radius;
+        const y = cy + Math.sin(p.angle) * p.radius * 0.45 + 10;
+        const a = 0.4 + Math.sin(avTime*2 + p.phase)*0.35;
+        ctx.save();
+        ctx.fillStyle = `rgba(155,51,255,${a})`;
+        ctx.shadowBlur = 8; ctx.shadowColor = '#9d33ff';
+        ctx.beginPath(); ctx.arc(x,y,p.size,0,Math.PI*2); ctx.fill();
+        ctx.restore();
     });
 }
 
-// ═══════════════════════════════════════════════════
-// XP BAR CANVAS — 60 FPS shimmer + particle burst
-// ═══════════════════════════════════════════════════
-function animXP(dt) {
-    const c = document.getElementById('xp-canvas');
-    if (!c) return;
-    if (!c.width || c.width !== c.clientWidth) c.width = c.clientWidth || 400;
-    const ctx = c.getContext('2d');
-    const W=c.width, H=c.height;
+/* ═══════════════════════════════════════════════════════════════════
+   RADAR / SPIDER CHART (around avatar)
+   ═══════════════════════════════════════════════════════════════════ */
+let radarCtx;
+const RADAR_LABELS = ['STR','INT','AGI','DIS','FOC'];
+const RADAR_COLORS = ['#ff6b6b','#44ddff','#44ff99','#ffd700','#cc88ff'];
 
-    // Ease toward target
-    const diff = xpTarget - xpDisplayed;
-    if (Math.abs(diff) > 0.05) xpDisplayed += diff * 0.05;
-
-    const fillW = W * Math.min(xpDisplayed / xpMax, 1.0);
-    ctx.clearRect(0,0,W,H);
-
-    // Track
-    ctx.fillStyle='rgba(139,0,255,0.08)';
-    ctx.beginPath(); ctx.roundRect(0,0,W,H,4); ctx.fill();
-
-    // Fill
-    if (fillW > 2) {
-        const g = ctx.createLinearGradient(0,0,W,0);
-        g.addColorStop(0,'#3D0070');
-        g.addColorStop(0.4,'#8B00FF');
-        g.addColorStop(0.8,'#A020F0');
-        g.addColorStop(1,'#00F5FF');
-        ctx.fillStyle = g;
-        ctx.shadowColor = '#8B00FF'; ctx.shadowBlur = 12;
-        ctx.beginPath(); ctx.roundRect(0,0,fillW,H,4); ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // Ice tip glow
-        const tipG = ctx.createLinearGradient(fillW-20,0,fillW+5,0);
-        tipG.addColorStop(0,'rgba(0,245,255,0)');
-        tipG.addColorStop(1,'rgba(0,245,255,0.8)');
-        ctx.fillStyle = tipG;
-        ctx.beginPath(); ctx.roundRect(Math.max(0,fillW-22),0,22,H,4); ctx.fill();
-    }
-
-    // Shimmer sweep
-    xpShimmerX += dt * 0.22 * shimmerDir;
-    if (xpShimmerX > W+80) { xpShimmerX = -80; }
-    if (xpShimmerX > -80 && xpShimmerX < fillW) {
-        const sg = ctx.createLinearGradient(xpShimmerX-40,0,xpShimmerX+40,0);
-        sg.addColorStop(0,'rgba(255,255,255,0)');
-        sg.addColorStop(0.5,'rgba(255,255,255,0.22)');
-        sg.addColorStop(1,'rgba(255,255,255,0)');
-        ctx.fillStyle = sg;
-        ctx.beginPath(); ctx.roundRect(0,0,fillW,H,4); ctx.fill();
-    }
-
-    // Milestone ticks
-    [0.25,0.5,0.75].forEach(m => {
-        ctx.strokeStyle='rgba(0,245,255,0.35)'; ctx.lineWidth=1;
-        ctx.beginPath(); ctx.moveTo(W*m,0); ctx.lineTo(W*m,H); ctx.stroke();
-    });
-
-    // Border
-    ctx.strokeStyle='rgba(139,0,255,0.5)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.roundRect(0,0,W,H,4); ctx.stroke();
+function initRadar() {
+    const canvas = document.getElementById('radar-canvas');
+    if (!canvas) return;
+    radarCtx = canvas.getContext('2d');
 }
 
-// ═══════════════════════════════════════════════════
-// STAT ARCS — Circular arc gauges for STR/INT/AGI/DIS
-// ═══════════════════════════════════════════════════
-function animStatArcs(dt) {
-    const c = document.getElementById('stat-arcs-canvas');
-    if (!c) return;
-    if (c.width !== c.clientWidth) { c.width = c.clientWidth || 280; c.height = Math.round(c.width * 0.5); }
-    const ctx = c.getContext('2d');
-    const W=c.width, H=c.height;
-    ctx.clearRect(0,0,W,H);
-
-    // Interpolate
-    ['str','int','agi','dis'].forEach(k => {
-        const d = attrTarget[k] - attrDisplayed[k];
-        if (Math.abs(d) > 0.05) attrDisplayed[k] += d * 0.06;
-    });
-
-    const arcs = [
-        { key:'str', label:'STR', color:'#C77DFF', glow:'rgba(199,125,255,0.6)', cx:W*0.15, cy:H*0.5 },
-        { key:'int', label:'INT', color:'#00BFFF', glow:'rgba(0,191,255,0.6)',   cx:W*0.38, cy:H*0.5 },
-        { key:'agi', label:'AGI', color:'#00FF88', glow:'rgba(0,255,136,0.6)',   cx:W*0.62, cy:H*0.5 },
-        { key:'dis', label:'DIS', color:'#FF6B6B', glow:'rgba(255,107,107,0.6)', cx:W*0.85, cy:H*0.5 },
-    ];
-    const arcR = W * 0.09;
-
-    arcs.forEach(a => {
-        const val = attrDisplayed[a.key];
-        const maxVal = 100;
-        const startA = -Math.PI * 0.8;
-        const endA   =  Math.PI * 0.8;
-        const prog   = startA + (val/maxVal)*(endA-startA);
-
-        // Track
-        ctx.beginPath(); ctx.arc(a.cx,a.cy,arcR,startA,endA);
-        ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=arcR*0.22; ctx.lineCap='round'; ctx.stroke();
-
-        // Fill
-        if (val > 0) {
-            ctx.beginPath(); ctx.arc(a.cx,a.cy,arcR,startA,prog);
-            ctx.strokeStyle=a.color; ctx.lineWidth=arcR*0.22; ctx.lineCap='round';
-            ctx.shadowColor=a.glow; ctx.shadowBlur=12; ctx.stroke(); ctx.shadowBlur=0;
-        }
-
-        // Value
-        ctx.fillStyle='#F0E8FF'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.font = `bold ${Math.round(arcR*0.65)}px Rajdhani,sans-serif`;
-        ctx.fillText(Math.round(val), a.cx, a.cy - arcR*0.08);
-
-        // Label
-        ctx.fillStyle='#8B6BB0'; ctx.font = `${Math.round(arcR*0.42)}px Rajdhani,sans-serif`;
-        ctx.fillText(a.label, a.cx, a.cy + arcR*0.55);
-    });
-}
-
-// ═══════════════════════════════════════════════════
-// RADAR CHART CANVAS
-// ═══════════════════════════════════════════════════
-function animRadar(dt) {
-    const c = document.getElementById('radar-canvas');
-    if (!c) return;
-    const rect = c.getBoundingClientRect();
-    const sz = Math.min(rect.width||200, rect.height||200);
-    if (Math.abs(c.width-sz) > 2) { c.width=sz; c.height=sz; }
-    const ctx = c.getContext('2d');
-    const W=c.width, H=c.height;
-    const cx=W/2, cy=H/2, maxR=Math.min(W,H)*0.34;
-
-    for (let i=0;i<5;i++) {
-        const d=radarTarget[i]-radarDisplayed[i];
-        if (Math.abs(d)>0.05) radarDisplayed[i]+=d*0.05;
-    }
+function drawRadar(ts) {
+    const ctx = radarCtx;
+    if (!ctx) return;
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    const cx = W/2, cy = H/2;
+    const maxR = Math.min(cx,cy) * 0.85;
+    const N = RADAR_LABELS.length;
+    const t = ts*0.001;
 
     ctx.clearRect(0,0,W,H);
 
-    // Grid rings
-    [1,0.67,0.33].forEach((s,ri) => {
+    const angles = RADAR_LABELS.map((_,i) => -Math.PI/2 + (i/N)*Math.PI*2);
+
+    // Background web rings
+    for (let ring = 1; ring <= 5; ring++) {
+        const r = (ring/5)*maxR;
+        ctx.save();
+        ctx.strokeStyle = `rgba(100,0,200,${0.12 + (ring===5?0.06:0)})`;
+        ctx.lineWidth = ring===5 ? 1 : 0.6;
+        ctx.setLineDash([3,5]);
         ctx.beginPath();
-        for(let i=0;i<5;i++) {
-            const a=(i/5)*Math.PI*2-Math.PI/2;
-            i===0?ctx.moveTo(cx+Math.cos(a)*maxR*s, cy+Math.sin(a)*maxR*s):ctx.lineTo(cx+Math.cos(a)*maxR*s, cy+Math.sin(a)*maxR*s);
-        }
-        ctx.closePath();
-        ctx.strokeStyle=ri===0?'rgba(139,0,255,0.45)':'rgba(139,0,255,0.18)';
-        ctx.lineWidth=ri===0?1:0.6; ctx.stroke();
-    });
+        angles.forEach((a,i) => {
+            const x = cx + Math.cos(a)*r, y = cy + Math.sin(a)*r;
+            i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+        });
+        ctx.closePath(); ctx.stroke();
+        ctx.restore();
+    }
 
     // Axis lines
-    for(let i=0;i<5;i++) {
-        const a=(i/5)*Math.PI*2-Math.PI/2;
-        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(a)*maxR, cy+Math.sin(a)*maxR);
-        ctx.strokeStyle='rgba(139,0,255,0.3)'; ctx.lineWidth=0.6; ctx.stroke();
-    }
+    angles.forEach(a => {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(100,0,200,0.2)';
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(cx,cy);
+        ctx.lineTo(cx+Math.cos(a)*maxR, cy+Math.sin(a)*maxR);
+        ctx.stroke();
+        ctx.restore();
+    });
 
-    // Filled polygon
+    // Data polygon (filled)
+    const vals = RADAR_LABELS.map(l => Math.min(G.radarValues[l]||10, 100)/100);
+    ctx.save();
     ctx.beginPath();
-    for(let i=0;i<5;i++) {
-        const a=(i/5)*Math.PI*2-Math.PI/2;
-        const v=(radarDisplayed[i]/100)*maxR;
-        i===0?ctx.moveTo(cx+Math.cos(a)*v,cy+Math.sin(a)*v):ctx.lineTo(cx+Math.cos(a)*v,cy+Math.sin(a)*v);
-    }
+    angles.forEach((a,i) => {
+        const r = vals[i]*maxR;
+        const x = cx+Math.cos(a)*r, y = cy+Math.sin(a)*r;
+        i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
     ctx.closePath();
-    ctx.fillStyle='rgba(139,0,255,0.2)'; ctx.fill();
-    ctx.strokeStyle='rgba(139,0,255,0.8)'; ctx.lineWidth=1.5;
-    ctx.shadowColor='rgba(139,0,255,0.5)'; ctx.shadowBlur=8; ctx.stroke(); ctx.shadowBlur=0;
+    const fill = ctx.createRadialGradient(cx,cy,0,cx,cy,maxR);
+    fill.addColorStop(0,'rgba(155,51,255,0.4)');
+    fill.addColorStop(1,'rgba(100,0,200,0.1)');
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(187,102,255,${0.7+Math.sin(t*1.5)*0.2})`;
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 10; ctx.shadowColor = '#9d33ff';
+    ctx.stroke();
+    ctx.restore();
 
-    // Vertex dots + labels
-    for(let i=0;i<5;i++) {
-        const a=(i/5)*Math.PI*2-Math.PI/2;
-        const v=(radarDisplayed[i]/100)*maxR;
-        ctx.beginPath(); ctx.arc(cx+Math.cos(a)*v, cy+Math.sin(a)*v, 4, 0, Math.PI*2);
-        ctx.fillStyle=RADAR_COLORS[i]; ctx.shadowColor=RADAR_COLORS[i]; ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
-        const lx=cx+Math.cos(a)*(maxR+18), ly=cy+Math.sin(a)*(maxR+14);
-        ctx.font=`10px Rajdhani,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillStyle='rgba(139,107,176,0.8)'; ctx.shadowBlur=0;
-        ctx.fillText(RADAR_LABELS[i],lx,ly);
-    }
+    // Node dots + labels
+    angles.forEach((a,i) => {
+        const r = vals[i]*maxR;
+        const x = cx+Math.cos(a)*r, y = cy+Math.sin(a)*r;
+        // Node
+        ctx.save();
+        ctx.fillStyle = RADAR_COLORS[i];
+        ctx.shadowBlur = 8; ctx.shadowColor = RADAR_COLORS[i];
+        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+        // Label
+        const lx = cx+Math.cos(a)*(maxR+14), ly = cy+Math.sin(a)*(maxR+14);
+        ctx.save();
+        ctx.font = 'bold 9px Share Tech Mono, monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = RADAR_COLORS[i];
+        ctx.shadowBlur = 5; ctx.shadowColor = RADAR_COLORS[i];
+        ctx.fillText(RADAR_LABELS[i], lx, ly);
+        ctx.restore();
+    });
 }
 
-// ═══════════════════════════════════════════════════
-// CALENDAR
-// ═══════════════════════════════════════════════════
-function renderCalendar(streakDays=[]) {
-    const grid = document.getElementById('cal-grid');
-    const lbl  = document.getElementById('cal-month');
+/* ═══════════════════════════════════════════════════════════════════
+   HEALTH GRID (pixel-style colored squares)
+   ═══════════════════════════════════════════════════════════════════ */
+const HEALTH_COLS = 7;
+const HEALTH_ROWS = 4;
+const STAT_COLORS = {
+    0: '#ff6b6b', 1: '#cc88ff', 2: '#ffd700',
+    3: '#44ff99', 4: '#ff6b6b', 5: '#44ddff', 6: '#cc88ff',
+};
+
+function buildHealthGrid() {
+    const grid = document.getElementById('health-grid');
     if (!grid) return;
-    const now=new Date(), yr=now.getFullYear(), mo=now.getMonth(), td=now.getDate();
-    const MONTHS=['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
-    lbl.textContent = `${MONTHS[mo]} ${yr}`;
-    const firstDay = new Date(yr,mo,1).getDay();
-    const offset = firstDay===0?6:firstDay-1;
-    const daysInMo = new Date(yr,mo+1,0).getDate();
-    grid.innerHTML='';
-    for(let e=0;e<offset;e++) { const d=document.createElement('div'); d.className='cal-day empty'; grid.appendChild(d); }
-    for(let d=1;d<=daysInMo;d++) {
-        const cell=document.createElement('div');
-        const isToday=d===td, isPast=d<td, isDone=streakDays.includes(d);
-        const isMile=[7,14,21,30].includes(d) && isDone;
-        let cls='cal-day ';
-        if(isToday) cls+='today'; else if(isDone) cls+='completed'; else if(isPast) cls+='missed'; else cls+='future';
-        if(isMile) cls+=' milestone';
-        cell.className=cls; cell.textContent=d;
-        grid.appendChild(cell);
+    grid.innerHTML = '';
+    for (let r = 0; r < HEALTH_ROWS; r++) {
+        for (let c = 0; c < HEALTH_COLS; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'hg-cell';
+            cell.id = `hg-${r}-${c}`;
+            grid.appendChild(cell);
+        }
     }
 }
 
-// ═══════════════════════════════════════════════════
-// LIVE DATA (REST API polling)
-// ═══════════════════════════════════════════════════
-function startLiveData() {
-    fetchStats();
+function updateHealthGrid(playerData) {
+    const attrs = (playerData && playerData.attributes) ? playerData.attributes : {};
+    const vals = [
+        (attrs.strength     ||10)/100,
+        (attrs.discipline   ||10)/100,
+        (attrs.agility      ||10)/100,
+        (attrs.intelligence ||10)/100,
+        (attrs.strength     ||10)/100,
+        (attrs.intelligence ||10)/100,
+        attrs.focus ? attrs.focus/100 : (attrs.discipline||10)/100,
+    ];
+    for (let r = 0; r < HEALTH_ROWS; r++) {
+        for (let c = 0; c < HEALTH_COLS; c++) {
+            const cell = document.getElementById(`hg-${r}-${c}`);
+            if (!cell) continue;
+            const threshold = (HEALTH_ROWS - r) / HEALTH_ROWS;
+            const lit = vals[c] >= threshold * 0.55;
+            const alpha = lit ? (0.55 + vals[c]*0.45) : 0.05;
+            const col = STAT_COLORS[c];
+            cell.style.background = lit
+                ? `rgba(${hexToRgb(col)},${alpha})`
+                : 'rgba(30,0,60,0.15)';
+            cell.style.borderColor = lit ? `${col}55` : 'rgba(100,0,200,0.12)';
+            cell.style.color = col;
+            cell.classList.toggle('lit', lit);
+        }
+    }
+}
+
+function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return `${r},${g},${b}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   POTION BOTTLES (Market Place)
+   ═══════════════════════════════════════════════════════════════════ */
+function drawPotions() {
+    [0,1,2].forEach(i => {
+        const canvas = document.getElementById(`potion-${i}`);
+        if (!canvas) return;
+        drawPotion(canvas.getContext('2d'), G.potionColors[i], i);
+    });
+}
+
+function drawPotion(ctx, color, idx) {
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    ctx.clearRect(0,0,W,H);
+    const cx = W/2;
+    const pulseScale = 1 + Math.sin(Date.now()*0.002 + idx)*0.03;
+
+    ctx.save();
+    ctx.translate(cx, H*0.5);
+    ctx.scale(pulseScale, pulseScale);
+
+    // Bottle body
+    const bx = 0, by = 0;
+    const bw = 20, bh = 36;
+    const grad = ctx.createLinearGradient(-bw,0,bw,0);
+    grad.addColorStop(0, 'rgba(10,0,22,0.9)');
+    grad.addColorStop(0.3, color+'99');
+    grad.addColorStop(0.7, color+'cc');
+    grad.addColorStop(1, 'rgba(10,0,22,0.9)');
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = color + 'aa';
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 14; ctx.shadowColor = color;
+
+    // Rounded bottle shape
+    ctx.beginPath();
+    ctx.moveTo(-bw/2, -bh/2 + 6);
+    ctx.quadraticCurveTo(-bw/2-6, 0, -bw/2+2, bh/2);
+    ctx.quadraticCurveTo(bx, bh/2+6, bw/2-2, bh/2);
+    ctx.quadraticCurveTo(bw/2+6, 0, bw/2, -bh/2+6);
+    ctx.quadraticCurveTo(bw/4, -bh/2, bw/4, -bh/2-4);
+    ctx.lineTo(-bw/4, -bh/2-4);
+    ctx.quadraticCurveTo(-bw/4, -bh/2, -bw/2, -bh/2+6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Cork
+    ctx.fillStyle = '#aa8855';
+    ctx.fillRect(-bw/4, -bh/2-10, bw/2, 7);
+    ctx.strokeStyle = '#cc9966';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(-bw/4, -bh/2-10, bw/2, 7);
+
+    // Liquid level
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-bw/2+3, -bh/4, bw-6, bh/1.6);
+    ctx.clip();
+    ctx.fillStyle = color + '44';
+    ctx.fillRect(-bw/2+3, -2, bw-6, bh/1.6);
+    // Bubbles
+    [[-4,-5,2],[3,4,1.5],[0,-10,1.8]].forEach(([bx2,by2,br]) => {
+        ctx.fillStyle = color + '55';
+        ctx.beginPath();
+        ctx.arc(bx2, by2, br, 0, Math.PI*2);
+        ctx.fill();
+    });
+    ctx.restore();
+
+    // Shine
+    ctx.save();
+    const shine = ctx.createLinearGradient(-bw/2+4,-bh/2,bw/2-8,bh/2);
+    shine.addColorStop(0,'rgba(255,255,255,0.18)');
+    shine.addColorStop(0.4,'rgba(255,255,255,0.06)');
+    shine.addColorStop(1,'transparent');
+    ctx.fillStyle = shine;
+    ctx.beginPath();
+    ctx.ellipse(-bw/4, -2, 4, bh/2.5, -0.3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CAPITAL REACTOR
+   ═══════════════════════════════════════════════════════════════════ */
+let reactorCtx, reactorTime = 0;
+
+function initCapitalReactor() {
+    const canvas = document.getElementById('reactor-canvas');
+    if (!canvas || reactorCtx) return;
+    canvas.width  = 300; canvas.height = 300;
+    reactorCtx = canvas.getContext('2d');
+}
+
+function drawReactor(ts) {
+    const ctx = reactorCtx;
+    if (!ctx) return;
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    const cx = W/2, cy = H/2;
+    reactorTime = ts*0.001;
+    ctx.clearRect(0,0,W,H);
+
+    const td = G.treasuryData || {};
+    const assetPct = (td.asset_pct||30)/100;
+    const sustPct  = (td.sustenance_pct||40)/100;
+    const liabPct  = (td.liability_pct||10)/100;
+    const health   = (td.frugality_score||50)/100;
+
+    // BG
+    const bg = ctx.createRadialGradient(cx,cy,0,cx,cy,cx);
+    bg.addColorStop(0, `rgba(40,0,80,${0.3+health*0.3})`);
+    bg.addColorStop(1, 'rgba(7,0,16,0.95)');
+    ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(cx,cy,cx,0,Math.PI*2); ctx.fill();
+
+    // Core
+    const coreR = 38 + health*22;
+    const coreG = ctx.createRadialGradient(cx,cy,0,cx,cy,coreR);
+    coreG.addColorStop(0, `rgba(155,51,255,${0.6+health*0.3})`);
+    coreG.addColorStop(0.6,'rgba(100,0,200,0.3)');
+    coreG.addColorStop(1, 'transparent');
+    ctx.fillStyle = coreG;
+    ctx.beginPath(); ctx.arc(cx,cy,coreR,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = `rgba(187,102,255,${0.5+Math.sin(reactorTime*2)*0.3})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx,cy,coreR,0,Math.PI*2); ctx.stroke();
+
+    // Asset gold orbits
+    const nAssets = Math.max(2, Math.round(assetPct*7));
+    for (let i=0; i<nAssets; i++) {
+        const a = (i/nAssets)*Math.PI*2 + reactorTime*0.7;
+        const r = 65 + i*9;
+        const x = cx+Math.cos(a)*r, y = cy+Math.sin(a)*(r*0.6);
+        const g2 = ctx.createRadialGradient(x,y,0,x,y,10);
+        g2.addColorStop(0,'rgba(255,215,0,0.9)'); g2.addColorStop(1,'transparent');
+        ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill();
+    }
+
+    // Liability red dots
+    for (let i=0; i<Math.round(liabPct*5); i++) {
+        const a = -reactorTime*1.3 + (i/5)*Math.PI*2;
+        const r = 55;
+        const x = cx+Math.cos(a)*r, y = cy+Math.sin(a)*(r*0.55);
+        ctx.fillStyle = 'rgba(255,34,85,0.8)';
+        ctx.shadowBlur = 8; ctx.shadowColor = '#ff2255';
+        ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+
+    // Outer dashed ring
+    ctx.save();
+    ctx.strokeStyle = 'rgba(100,0,200,0.3)'; ctx.lineWidth = 1;
+    ctx.setLineDash([4,8]); ctx.lineDashOffset = -reactorTime*20;
+    ctx.beginPath(); ctx.arc(cx,cy,cx-5,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    // Center text
+    ctx.fillStyle = `rgba(200,160,255,${0.8+Math.sin(reactorTime*2)*0.2})`;
+    ctx.font = 'bold 9px Cinzel, serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('CAPITAL', cx, cy-6);
+    ctx.fillText('REACTOR', cx, cy+6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INTEL GLOBE
+   ═══════════════════════════════════════════════════════════════════ */
+let intelCtx, intelGlobeNodes = [], intelAngle = 0;
+
+function initIntelGlobe() {
+    const canvas = document.getElementById('intel-globe-canvas');
+    if (!canvas || intelCtx) return;
+    canvas.width  = canvas.offsetWidth  || 600;
+    canvas.height = canvas.offsetHeight || 600;
+    intelCtx = canvas.getContext('2d');
+    intelGlobeNodes = Array.from({length:22}, () => ({
+        phi: Math.random()*Math.PI*2,
+        theta: Math.acos(2*Math.random()-1),
+        active: Math.random()>0.4,
+        pulse: Math.random()*Math.PI*2,
+    }));
+}
+
+function drawIntelGlobe(ts) {
+    const ctx = intelCtx;
+    if (!ctx) return;
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    const cx = W/2, cy = H/2;
+    const R = Math.min(cx,cy)*0.7;
+    intelAngle = ts*0.0002;
+    ctx.clearRect(0,0,W,H);
+
+    ctx.strokeStyle = 'rgba(100,0,200,0.15)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+
+    for (let i=0;i<6;i++) {
+        const a = (i/6)*Math.PI + intelAngle;
+        ctx.strokeStyle = 'rgba(100,0,200,0.07)'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.arc(cx,cy,R,a,a+Math.PI); ctx.stroke();
+    }
+
+    const vis = [];
+    intelGlobeNodes.forEach(n => {
+        const phi = n.phi + intelAngle;
+        const x = cx + R*Math.sin(n.theta)*Math.cos(phi);
+        const y = cy + R*Math.cos(n.theta);
+        const depth = Math.sin(n.theta)*Math.sin(phi);
+        if (depth < 0) return;
+        const a = depth*0.9;
+        const col = n.active ? '#bb66ff' : '#ff2255';
+        ctx.fillStyle = `${col}${Math.round(a*255).toString(16).padStart(2,'0')}`;
+        ctx.beginPath(); ctx.arc(x,y,n.active?5:3,0,Math.PI*2); ctx.fill();
+        if (n.active) {
+            const p = Math.sin(ts*0.003+n.pulse)*0.5+0.5;
+            ctx.strokeStyle = `rgba(187,102,255,${a*p*0.5})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(x,y,5+p*8,0,Math.PI*2); ctx.stroke();
+        }
+        vis.push({x,y,depth,active:n.active});
+    });
+
+    for (let i=0;i<vis.length;i++) {
+        for (let j=i+1;j<vis.length;j++) {
+            const dx=vis[i].x-vis[j].x, dy=vis[i].y-vis[j].y;
+            if (dx*dx+dy*dy<9000) {
+                ctx.strokeStyle = `rgba(100,0,200,${Math.min(vis[i].depth,vis[j].depth)*0.3})`;
+                ctx.lineWidth = 0.7;
+                ctx.beginPath(); ctx.moveTo(vis[i].x,vis[i].y); ctx.lineTo(vis[j].x,vis[j].y); ctx.stroke();
+            }
+        }
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LEVEL UP CINEMATIC
+   ═══════════════════════════════════════════════════════════════════ */
+async function triggerLevelUp(newLevel, newRank) {
+    const ov = document.getElementById('levelup-overlay');
+    document.getElementById('lu-level').textContent = `LEVEL ${newLevel}`;
+    document.getElementById('lu-rank').textContent  = `RANK ${newRank||'?'} HUNTER`;
+    ov.hidden = false;
+
+    const lc = document.getElementById('lu-canvas');
+    lc.width = innerWidth; lc.height = innerHeight;
+    const lctx = lc.getContext('2d');
+    const particles = Array.from({length:200},()=>({
+        angle: Math.random()*Math.PI*2, speed: 3+Math.random()*7,
+        r: 1+Math.random()*3, life:0, max:50+Math.random()*60,
+        color: ['#9d33ff','#ffd700','#00e5ff','#ff44cc'][Math.floor(Math.random()*4)],
+    }));
+    const cx = innerWidth/2, cy = innerHeight/2;
+    let frame = 0;
+    const loop = () => {
+        if (frame > 180) return;
+        lctx.fillStyle = 'rgba(7,0,16,0.12)';
+        lctx.fillRect(0,0,innerWidth,innerHeight);
+        particles.forEach(p => {
+            p.life++;
+            if (p.life>p.max) { p.life=0; p.angle=Math.random()*Math.PI*2; p.speed=3+Math.random()*7; }
+            const dist = p.life/p.max * 350;
+            const a = 1-p.life/p.max;
+            lctx.globalAlpha = a;
+            lctx.fillStyle = p.color;
+            lctx.shadowBlur = 6; lctx.shadowColor = p.color;
+            lctx.beginPath();
+            lctx.arc(cx+Math.cos(p.angle)*dist, cy+Math.sin(p.angle)*dist, p.r*a, 0, Math.PI*2);
+            lctx.fill();
+        });
+        lctx.globalAlpha = 1;
+        frame++;
+        requestAnimationFrame(loop);
+    };
+    loop();
+    playLevelUpSound();
+    await delay(3200);
+    ov.hidden = true;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DATA LOOP
+   ═══════════════════════════════════════════════════════════════════ */
+function startDataLoop() {
+    fetchAll();
+    setInterval(fetchAll, 15000);
+    setInterval(fetchLogs, 8000);
+}
+
+async function fetchAll() {
+    await Promise.allSettled([fetchStats(), fetchTreasury()]);
     fetchLogs();
-    setInterval(fetchStats, 5000);
-    setInterval(fetchLogs, 1500);
 }
 
 async function fetchStats() {
     try {
         const r = await fetch('/api/stats');
-        if (!r.ok) return;
-        updateUI(await r.json());
+        const d = await r.json();
+        if (!d || d.error) return;
+        G.player = d;
+        updateHUD(d);
+        loadQuests(d);
+        checkLevelUp(d);
     } catch(e) {}
 }
 
-function updateUI(d) {
-    const name = d.hunter_name || 'HUNTER';
-
-    // Identity sidebar
-    document.getElementById('hunter-name').textContent = name.toUpperCase();
-    const rb = document.getElementById('rank-badge');
-    rb.textContent = d.rank || 'E';
-    rb.className = 'hunter-rank-badge' + (['S'].includes(d.rank)?' rank-S':'');
-    document.getElementById('rank-label').textContent = d.rank || 'E';
-
-    // HP
-    const hp=d.hp||500, hpMax=d.hp_max||500;
-    const hb = document.getElementById('hp-bar-fill');
-    if(hb) hb.style.width = `${Math.max(0,Math.min((hp/hpMax)*100,100))}%`;
-    const hd = document.getElementById('hp-display'); if(hd) hd.textContent=`${hp}/${hpMax}`;
-
-    // Gold / streak
-    document.getElementById('gold-val').textContent   = d.gold || 0;
-    document.getElementById('streak-val').textContent = d.streak || 0;
-    document.getElementById('gold-display').textContent  = `${d.gold||0}G`;
-    document.getElementById('streak-display').textContent = `${d.streak||0} DAYS`;
-    const cs = document.getElementById('cal-streak'); if(cs) cs.textContent=d.streak||0;
-
-    // North star
-    const ns = document.getElementById('north-star-sidebar');
-    if(ns) ns.textContent = `"${(d.north_star||'SET YOUR NORTH STAR').toUpperCase()}"`;
-
-    // Level + XP
-    const nl = d.level||1;
-    document.getElementById('level-num').textContent = nl;
-    const lt = document.getElementById('level-tag'); if(lt) lt.textContent='HUNTER';
-    const xr = document.getElementById('xp-ratio'); if(xr) xr.textContent=`${d.xp||0} / ${d.xp_threshold||1000} XP`;
-    xpTarget=d.xp||0; xpMax=d.xp_threshold||1000;
-    const nrv=document.getElementById('next-rank-val');
-    const ranks=['E','D','C','B','A','S'];
-    const ri=ranks.indexOf(d.rank||'E');
-    if(nrv) nrv.textContent=ri<ranks.length-1?ranks[ri+1]:'MAX';
-
-    // Level up check
-    if (nl > prevLevel) { triggerLevelUp(nl); }
-    prevLevel = nl;
-
-    // Attributes
-    if (d.attributes) {
-        const a=d.attributes;
-        attrTarget.str=a.strength||a.str||10;
-        attrTarget.int=a.intelligence||a.int||10;
-        attrTarget.agi=a.agility||a.agi||10;
-        attrTarget.dis=a.discipline||a.dis||10;
-        const attrs = document.getElementById('hud-attributes');
-        if(attrs) attrs.textContent=`STR:${attrTarget.str} // INT:${attrTarget.int} // AGI:${attrTarget.agi} // DIS:${attrTarget.dis}`;
-    }
-
-    // Focus
-    focusActive = d.focus_active||false;
-    const fs=document.getElementById('focus-status'), ft=document.getElementById('focus-txt');
-    if(focusActive) { fs?.classList.add('active'); if(ft) ft.textContent='FOCUS ACTIVE'; }
-    else            { fs?.classList.remove('active'); if(ft) ft.textContent='SYSTEM STANDBY'; }
-    const fb=document.getElementById('btn-focus'), fbt=document.getElementById('focus-btn-text');
-    if(focusActive) { fb?.classList.add('active-focus'); if(fbt) fbt.textContent='DEACTIVATE FOCUS'; }
-    else            { fb?.classList.remove('active-focus'); if(fbt) fbt.textContent='INITIATE FOCUS SESSION'; }
-
-    // Quests
-    allQuests = d.daily_quests||[];
-    renderDailyQuests(allQuests);
-    renderAllQuests(allQuests);
-
-    // Radar from quests
-    const map={FITNESS:0,PHYSICAL:0,MENTAL:1,CAREER:1,SKILLS:1,FINANCIAL:2,FINANCE:2,SPIRITUAL:3,MINDSET:3,EMOTIONAL:4,SOCIAL:4};
-    const tot=[0,0,0,0,0], cnt=[0,0,0,0,0];
-    allQuests.forEach(q=>{const idx=map[(q.category||'').toUpperCase()]; if(idx!==undefined){tot[idx]+=(q.status==='COMPLETED'?100:25);cnt[idx]++;}});
-    for(let i=0;i<5;i++) radarTarget[i]=cnt[i]>0?Math.min(tot[i]/cnt[i],100):radarTarget[i];
-
-    // Achievements
-    checkAchievements(d);
-}
-
-// ═══════════════════════════════════════════════════
-// QUEST RENDERING
-// ═══════════════════════════════════════════════════
-function renderDailyQuests(quests) {
-    const list=document.getElementById('daily-quest-list');
-    if(!list) return;
-    list.innerHTML='';
-    if(!quests||!quests.length) { list.innerHTML='<div class="quest-empty">Run Daily Protocol to populate quests.</div>'; return; }
-    quests.slice(0,10).forEach((q,i)=>{
-        const done=q.status==='COMPLETED';
-        const el=document.createElement('div');
-        el.className=`quest-item ${done?'completed':''}`;
-        el.style.animationDelay=`${i*60}ms`;
-        el.innerHTML=`
-            <div class="qi-check">${done?'✓':''}</div>
-            <div class="qi-body">
-                <span class="qi-title">${q.title}</span>
-                <span class="qi-xp">+${q.xp_reward||0} XP</span>
-            </div>
-            <span class="qi-badge badge-${q.category||'DAILY'}">${q.category||'DAILY'}</span>
-        `;
-        el.addEventListener('click',()=>{toggleQuest(q.title,q.evidence_required,done);playUISound('click');});
-        list.appendChild(el);
-    });
-}
-
-function renderAllQuests(quests) {
-    const g=document.getElementById('all-quests-grid');
-    if(!g) return;
-    const filtered=activeFilter==='ALL'?quests:quests.filter(q=>(q.category||'').toUpperCase()===activeFilter);
-    g.innerHTML='';
-    if(!filtered.length){g.innerHTML='<div class="quest-empty" style="grid-column:1/-1">No quests in this category.</div>';return;}
-    filtered.forEach(q=>{
-        const done=q.status==='COMPLETED', boss=(q.category||'').toUpperCase()==='BOSS';
-        const dc=done?'done':q.status==='IN_PROGRESS'?'act':'pend';
-        const card=document.createElement('div');
-        card.className=`qcard ${boss?'boss':''} ${done?'completed':''}`;
-        card.innerHTML=`
-            <div class="qc-head"><span class="qc-title">${q.title}</span><span class="qi-badge badge-${q.category||'DAILY'}">${q.category||'DAILY'}</span></div>
-            <div class="qc-desc">${q.description||'Complete this mission.'}</div>
-            <div class="qc-foot"><span class="qc-xp">+${q.xp_reward||0} XP${boss?' ☠':''}</span><span class="status-ring ${dc}"></span></div>
-        `;
-        card.addEventListener('click',()=>{toggleQuest(q.title,q.evidence_required,done);playUISound('click');});
-        g.appendChild(card);
-    });
-}
-
-function setQuestFilter(cat) {
-    activeFilter=cat;
-    document.querySelectorAll('.qfbtn').forEach(b=>b.classList.toggle('active',b.dataset.f===cat));
-    renderAllQuests(allQuests);
-}
-document.addEventListener('click',e=>{if(e.target.classList.contains('qfbtn'))setQuestFilter(e.target.dataset.f);});
-
-async function toggleQuest(title,evidence_required=false,isCompleted=false) {
-    let evidence='';
-    if(evidence_required&&!isCompleted){
-        evidence=prompt(`[EVIDENCE REQUIRED]\nProof for: "${title}"\n(GitHub link, Strava URL, etc.)`);
-        if(evidence===null||!evidence.trim()){logMsg('[QUEST] Evidence cancelled.','sys');return;}
-    }
+async function fetchTreasury() {
     try {
-        const r=await fetch('/api/quests/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,evidence})});
-        const d=await r.json();
-        if(r.ok){logMsg(`[QUEST] ${d.message}`,'sys');if(!isCompleted)playUISound('complete');fetchStats();}
-        else logMsg(`[ERROR] ${d.error}`,'error');
-    } catch(e){logMsg(`[ERROR] ${e}`,'error');}
+        const r = await fetch('/api/treasury/summary');
+        const d = await r.json();
+        if (!d || d.error) return;
+        G.treasuryData = d;
+        updateMarket(d);
+        // update reactor metrics if treasury is open
+        if (G.currentView === 'treasury') updateReactorMetrics(d);
+    } catch(e) {}
 }
 
-// ═══════════════════════════════════════════════════
-// CONTROL CENTER
-// ═══════════════════════════════════════════════════
-function initControlCenter() {
-    const fb=document.getElementById('btn-focus');
-    if(fb) fb.addEventListener('click',()=>{triggerAction(focusActive?'stop_private_mode':'start_private_mode');});
-}
-
-async function triggerAction(name) {
-    logMsg(`[SYSTEM] Executing: ${name.toUpperCase()}...`,'sys');
-    playUISound('click');
-    try {
-        const r=await fetch('/api/actions/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:name})});
-        const d=await r.json();
-        if(d.status==='success'){logMsg(`[J.A.R.V.I.S.] ${d.message}`,'jarvis');fetchStats();if(name==='intelligence_brief')setTimeout(()=>switchTab('intel'),2000);}
-        else logMsg(`[WARNING] ${d.message}`,'error');
-    } catch(e){logMsg(`[ERROR] ${e}`,'error');}
-}
-
-// ═══════════════════════════════════════════════════
-// LOG POLLING
-// ═══════════════════════════════════════════════════
 async function fetchLogs() {
     try {
-        const r=await fetch(`/api/logs?since=${lastLogIdx}`);
-        if(!r.ok) return;
-        const data=await r.json();
-        if(Array.isArray(data)&&data.length){data.forEach(e=>appendLog(e));lastLogIdx+=data.length;}
-    } catch(e){}
+        const r = await fetch(`/api/logs?last_idx=${G.logIdx}`);
+        const d = await r.json();
+        if (!d || !Array.isArray(d.logs)) return;
+        G.logIdx = d.next_idx || G.logIdx;
+        // Nothing visible on HUD for logs (could add a toast)
+    } catch(e) {}
 }
-function appendLog(e){logMsg(typeof e==='string'?e:(e.message||JSON.stringify(e)));}
 
-function logMsg(msg,type='info') {
-    ['terminal-logs','terminal-sys'].forEach(id=>{
-        const el=document.getElementById(id); if(!el)return;
-        const line=document.createElement('div');
-        const now=new Date();
-        const ts=`[${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}]`;
-        const m=String(msg);
-        const t=type!=='info'?type:m.includes('[ERROR]')?'error':m.includes('J.A.R.V.I.S.')||m.includes('JARVIS')?'jarvis':m.includes('[SYSTEM]')||m.includes('[QUEST]')||m.includes('[CLOUD]')?'sys':'info';
-        line.className=`log-${t}`;
-        line.textContent=`${ts} ${m}`;
-        el.appendChild(line);
-        el.scrollTop=el.scrollHeight;
-        while(el.children.length>250)el.removeChild(el.firstChild);
+function checkLevelUp(d) {
+    if (d.level && G.prevLevel > 0 && d.level > G.prevLevel) {
+        triggerLevelUp(d.level, d.rank);
+    }
+    if (d.level) G.prevLevel = d.level;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HUD UPDATE
+   ═══════════════════════════════════════════════════════════════════ */
+function updateHUD(d) {
+    const attrs = d.attributes || {};
+    const name  = d.hunter_name || 'APEX GHOST';
+
+    setText('hunter-name',    name);
+    setText('profile-name',   name);
+    setText('rank-badge',     d.rank  || 'E');
+    setText('level-num',      d.level || 1);
+    setText('streak-val',     d.streak || 0);
+    setText('streak-val2',    d.streak || 0);
+    setText('gold-val',       `${d.gold||0}G`);
+    setText('north-star',     d.north_star ? `"${d.north_star}"` : '"SET YOUR NORTH STAR"');
+
+    // XP
+    const xp = d.xp||0, xpMax = d.xp_threshold||1000;
+    setText('xp-val', `${xp.toLocaleString()} / ${xpMax.toLocaleString()}`);
+    setWidth('xp-fill', (xp/xpMax)*100);
+
+    // Stat values (skills + attrs)
+    const sMap = {
+        str: attrs.strength    || 10,
+        int: attrs.intelligence|| 10,
+        agi: attrs.agility     || 10,
+        dis: attrs.discipline  || 10,
+        foc: attrs.focus || attrs.discipline || 10,
+    };
+    G.radarValues = {
+        STR: sMap.str, INT: sMap.int, AGI: sMap.agi, DIS: sMap.dis, FOC: sMap.foc,
+    };
+    Object.entries(sMap).forEach(([k,v]) => {
+        const val = Math.round(v);
+        setText(`skv-${k}`, val);
+        setWidth(`skb-${k}`, Math.min(val,100));
+        setText(`av-${k}`,  val);
+        setWidth(`ab-${k}`,  Math.min(val,100));
+    });
+
+    // Health grid
+    updateHealthGrid(d);
+
+    // Goal completion
+    const quests = G.quests;
+    const total = quests.length;
+    const done  = quests.filter(q => questDone(q)).length;
+    const pct   = total > 0 ? Math.round((done/total)*100) : 0;
+    setText('goal-pct', `${pct}%`);
+    setWidth('goal-bar', pct);
+}
+
+function updateMarket(d) {
+    setText('mi-income-val', `R ${(d.monthly_income||0).toLocaleString()}`);
+    setText('mi-runway-val', `${d.runway_months||0} mo`);
+    setText('mi-score-val',  `${d.frugality_score||0}/100`);
+    setText('tr-income',     `R ${(d.monthly_income||0).toLocaleString()}`);
+    setText('tr-runway',     `${d.runway_months||0} mo`);
+    setText('tr-frugality',  `${d.frugality_score||0}/100`);
+    setText('tr-ratio',      `${d.kiyosaki_ratio||0}%`);
+}
+
+function updateReactorMetrics(d) { updateMarket(d); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   QUEST RENDERING
+   ═══════════════════════════════════════════════════════════════════ */
+function questType(q) {
+    const c = (q.category||q.quest_type||'').toLowerCase();
+    if (c.includes('boss')) return 'boss';
+    if (c.includes('habit')) return 'habit';
+    return 'daily';
+}
+function questDone(q) {
+    return q.status === 'completed' || q.completed === true;
+}
+
+function loadQuests(d) {
+    G.quests = [...(d.daily_quests||[]), ...(d.weekly_quests||[])];
+    renderQuestList(G.quests);
+    renderQuestGrid(G.quests);
+}
+
+function renderQuestList(quests) {
+    const el = document.getElementById('quest-list');
+    if (!el) return;
+    const active = quests.filter(q=>!questDone(q)).slice(0,5);
+    el.innerHTML = '';
+    if (!active.length) {
+        el.innerHTML = '<div class="quest-empty">ALL CONTRACTS CLEARED ✓</div>'; return;
+    }
+    active.forEach(q => {
+        const type = questType(q);
+        const div = document.createElement('div');
+        div.className = `q-item ${type==='boss'?'boss-q':type==='habit'?'habit-q':''}`;
+        const safeTitle = q.title.replace(/'/g,'&#39;');
+        div.innerHTML = `
+            <div class="q-title">${q.title}</div>
+            <span class="q-xp">+${q.xp_reward||50}XP</span>
+            <button class="q-done-btn" onclick="completeQuest('${safeTitle}',event)" id="qb-${encodeURIComponent(q.title)}">✓</button>
+        `;
+        el.appendChild(div);
     });
 }
 
-// ═══════════════════════════════════════════════════
-// NAVIGATION
-// ═══════════════════════════════════════════════════
-const TABS=['core','quests','goals','intel','system'];
-function initNavButtons() {
-    document.querySelectorAll('.nav-btn').forEach(btn=>{
-        btn.addEventListener('click',()=>switchTab(btn.dataset.tab));
-    });
-}
-function switchTab(id) {
-    TABS.forEach(t=>{
-        const p=document.getElementById(`pane-${t}`), b=document.getElementById(`nav-${t}`);
-        if(p) p.style.display=t===id?'flex':'none';
-        if(b) b.classList.toggle('active',t===id);
-    });
-    if(id==='goals')  loadPlan();
-    if(id==='intel')  loadIntel();
-    if(id==='system') loadJournal();
-    playUISound('click');
-}
-
-// ═══════════════════════════════════════════════════
-// PLAN / GOALS
-// ═══════════════════════════════════════════════════
-async function loadPlan() {
-    try {
-        const r=await fetch('/api/goals/plan'); if(!r.ok)return;
-        const d=await r.json(); if(!d.active){document.getElementById('plan-north-star').textContent='No plan deployed. Use the wizard.';return;}
-        document.getElementById('plan-hunter').textContent=d.profile_name||'---';
-        document.getElementById('plan-quarter').textContent=d.current_quarter||'---';
-        document.getElementById('plan-week').textContent=d.week_number||'---';
-        document.getElementById('plan-north-star').textContent=d.north_star||'---';
-        const ml=document.getElementById('plan-monthly');if(ml)ml.innerHTML=(d.monthly_focus||[]).map(i=>`<li>${i}</li>`).join('')||'<li>---</li>';
-        const wl=document.getElementById('plan-weekly');if(wl)wl.innerHTML=(d.weekly_targets||[]).map(i=>`<li>${i}</li>`).join('')||'<li>---</li>';
-        const tl=document.getElementById('plan-today');if(tl)tl.innerHTML=(d.today_actions||[]).map(i=>`<li>${i}</li>`).join('')||'<li>---</li>';
-        const bl=document.getElementById('goals-backlog');if(bl){bl.innerHTML='';(d.yearly_goals||[]).forEach(g=>{const c=document.createElement('div');c.className='goal-detail-card';c.innerHTML=`<div class="gdc-head"><span class="gdc-title">${g.title}</span><span class="gdc-cat">${g.category}</span></div><div class="gdc-body">${g.description||'No description.'}<br><small style="color:var(--ev-bright)">Deadline: ${g.deadline} — P${g.priority}</small></div>`;bl.appendChild(c);});}
-    } catch(e){}
-}
-
-function addGoal() {
-    const t=document.getElementById('b-title')?.value.trim();
-    const cat=document.getElementById('b-cat')?.value;
-    const desc=document.getElementById('b-desc')?.value.trim();
-    const met=document.getElementById('b-metric')?.value.trim();
-    const pri=document.getElementById('b-priority')?.value;
-    const dl=document.getElementById('b-deadline')?.value;
-    if(!t||!dl){alert('Title and deadline required!');return;}
-    builderGoals.push({title:t,category:cat,description:desc,success_metric:met,priority:pri,deadline:dl});
-    renderBuilderList(); ['b-title','b-desc','b-metric'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    playUISound('complete');
-}
-
-function removeGoal(i){builderGoals.splice(i,1);renderBuilderList();}
-
-function renderBuilderList() {
-    const cnt=document.getElementById('b-count');if(cnt)cnt.textContent=builderGoals.length;
-    const list=document.getElementById('b-list');if(!list)return;
-    list.innerHTML='';
-    builderGoals.forEach((g,i)=>{
-        const r=document.createElement('div');r.className='b-row';
-        r.innerHTML=`<span style="font-size:0.75rem;color:var(--tw)">${g.title} <span style="color:var(--tm)">(${g.category})</span></span><button class="b-rm" onclick="removeGoal(${i})">✕</button>`;
-        list.appendChild(r);
+function renderQuestGrid(quests) {
+    const grid = document.getElementById('all-quest-grid');
+    if (!grid) return;
+    const filter = grid.dataset.filter || 'ALL';
+    const filtered = filter==='ALL' ? quests : quests.filter(q=>questType(q)===filter.toLowerCase());
+    grid.innerHTML = '';
+    if (!filtered.length) {
+        grid.innerHTML = '<div style="color:rgba(187,102,255,.3);font-family:var(--f-mono);font-size:.65rem;padding:20px">NO CONTRACTS IN THIS CATEGORY</div>';
+        return;
+    }
+    filtered.forEach(q => {
+        const type = questType(q);
+        const done = questDone(q);
+        const card = document.createElement('div');
+        card.className = `aq-card ${type==='boss'?'boss-aq':type==='habit'?'habit-aq':''} ${done?'done-aq':''}`;
+        const safeTitle = q.title.replace(/'/g,'&#39;');
+        card.innerHTML = `
+            <span class="aq-badge ${type}">${type.toUpperCase()}</span>
+            <div class="aq-title">${q.title}</div>
+            <div class="aq-desc">${q.description||'—'}</div>
+            <div class="aq-footer">
+                <span class="aq-xp">+${q.xp_reward||50} XP</span>
+                ${!done
+                    ? `<button class="aq-btn" onclick="completeQuest('${safeTitle}',event)" id="aqb-${encodeURIComponent(q.title)}">⚔ COMPLETE</button>`
+                    : '<span style="color:var(--green);font-family:var(--f-mono);font-size:.6rem">✓ CLEARED</span>'}
+            </div>
+        `;
+        grid.appendChild(card);
     });
 }
 
-async function deployPlan() {
-    const name=document.getElementById('inp-name')?.value.trim();
-    const year=document.getElementById('inp-year')?.value;
-    const ns=document.getElementById('inp-northstar')?.value.trim();
-    if(!name||!ns||!builderGoals.length){alert('Fill name, north star and at least 1 goal.');return;}
+async function completeQuest(title, ev) {
+    ev?.stopPropagation();
+    const sid = encodeURIComponent(title);
+    document.querySelectorAll(`#qb-${sid}, #aqb-${sid}`).forEach(b=>{ b.disabled=true; b.textContent='...'; });
     try {
-        const r=await fetch('/api/goals/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile_name:name,target_year:year,north_star:ns,yearly_goals:builderGoals})});
-        const d=await r.json();
-        logMsg(r.ok?`[SYSTEM] Plan deployed: ${d.message||'OK'}`:`[ERROR] ${d.error}`);
-        if(r.ok){builderGoals=[];renderBuilderList();loadPlan();playUISound('complete');}
-    } catch(e){logMsg(`[ERROR] ${e}`,'error');}
-}
-
-async function loadGoalsDefaults() {
-    document.getElementById('inp-year').value=new Date().getFullYear();
-    document.getElementById('b-deadline').value=new Date(new Date().getFullYear(),11,31).toISOString().split('T')[0];
-    try{const r=await fetch('/api/stats');if(r.ok){const d=await r.json();document.getElementById('inp-name').value=d.hunter_name||'Hunter';document.getElementById('inp-northstar').value=d.north_star||'';}}catch(e){}
-}
-
-// ═══════════════════════════════════════════════════
-// INTEL
-// ═══════════════════════════════════════════════════
-async function loadIntel() {
-    const el=document.getElementById('intel-content'); if(!el)return;
-    try {
-        const r=await fetch('/api/intelligence/latest'); if(!r.ok){el.innerHTML='<div class="empty-state">No brief available. Trigger from System tab.</div>';return;}
-        const d=await r.json();
-        let html='';
-        if(d.summary) html+=`<div class="intel-summary">${d.summary}</div>`;
-        if(d.findings?.length){html+='<div class="intel-grid">';d.findings.forEach(f=>{html+=`<div class="intel-card"><div class="intel-card-title">${f.title||'Finding'}</div>${f.source?`<a href="${f.source}" target="_blank" rel="noopener">↗ Source</a>`:''}<p style="font-size:0.73rem;color:var(--tm);margin-top:0.3rem;line-height:1.5">${f.summary||''}</p></div>`;});html+='</div>';}
-        el.innerHTML=html||'<div class="empty-state">Brief is empty.</div>';
-    } catch(e){el.innerHTML=`<div class="empty-state">Load failed: ${e}</div>`;}
-}
-
-// ═══════════════════════════════════════════════════
-// JOURNAL
-// ═══════════════════════════════════════════════════
-async function submitJournal() {
-    const txt=document.getElementById('journal-text')?.value.trim();
-    const mood=document.getElementById('journal-mood')?.value;
-    if(!txt){alert('Write something first!');return;}
-    try {
-        const r=await fetch('/api/journal/entry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:txt,mood})});
-        const d=await r.json();
-        if(r.ok){logMsg(`[JOURNAL] Entry logged. Mood: ${mood}`,'sys');document.getElementById('journal-text').value='';loadJournal();playUISound('complete');}
-        else logMsg(`[ERROR] ${d.error}`,'error');
-    } catch(e){logMsg(`[ERROR] ${e}`,'error');}
-}
-
-async function loadJournal() {
-    const list=document.getElementById('journal-list'); if(!list)return;
-    try {
-        const r=await fetch('/api/journal/latest'); if(!r.ok)return;
-        const data=await r.json();
-        if(!Array.isArray(data)||!data.length){list.innerHTML='<div class="quest-empty">No entries yet.</div>';return;}
-        list.innerHTML='';
-        data.slice(-8).reverse().forEach(e=>{
-            const el=document.createElement('div');el.className='journal-entry';
-            const ts=new Date(e.timestamp||e.created_at||Date.now());
-            const tsStr=`${ts.getDate()}/${ts.getMonth()+1} ${String(ts.getHours()).padStart(2,'0')}:${String(ts.getMinutes()).padStart(2,'0')}`;
-            el.innerHTML=`<div class="je-head"><span class="je-time">${tsStr}</span><span class="je-mood">${e.mood||'NEUTRAL'}</span></div><div class="je-text">${e.content}</div>`;
-            list.appendChild(el);
+        const res = await fetch('/api/quests/toggle', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({title}),
         });
-    }catch(e){}
+        const data = await res.json();
+        if (data.status === 'success') {
+            spawnXPParticles(50, ev);
+            await delay(600);
+            await fetchStats();
+        } else {
+            document.querySelectorAll(`#qb-${sid}, #aqb-${sid}`).forEach(b=>{ b.disabled=false; b.textContent='RETRY'; });
+        }
+    } catch(e) {
+        document.querySelectorAll(`#qb-${sid}, #aqb-${sid}`).forEach(b=>{ b.disabled=false; b.textContent='RETRY'; });
+    }
 }
 
-// ═══════════════════════════════════════════════════
-// ACHIEVEMENTS
-// ═══════════════════════════════════════════════════
-function checkAchievements(d) {
-    const completed=(d.daily_quests||[]).filter(q=>q.status==='COMPLETED').length;
-    const hasBoss=(d.daily_quests||[]).some(q=>(q.category||'').toUpperCase()==='BOSS'&&q.status==='COMPLETED');
-    if(completed>=5)  unlock('ach-firstblood');
-    if((d.streak||0)>=7)  unlock('ach-scholar');
-    if((d.streak||0)>=30) unlock('ach-iron');
-    if(hasBoss)            unlock('ach-boss');
-    if(d.rank==='S')       unlock('ach-apex');
-}
-function unlock(id){const c=document.getElementById(id);if(c?.classList.contains('locked')){c.classList.remove('locked');c.style.borderColor='var(--gold)';c.style.boxShadow='0 0 12px var(--gold-glow)';playUISound('complete');}}
-
-// ═══════════════════════════════════════════════════
-// LEVEL UP CINEMATIC
-// ═══════════════════════════════════════════════════
-function triggerLevelUp(lvl) {
-    const ov=document.getElementById('levelup-overlay');
-    const ln=document.getElementById('lu-new-level');
-    if(!ov||!ln)return;
-    ln.textContent=`LEVEL ${lvl} ACHIEVED`;
-    ov.removeAttribute('hidden');
-    playUISound('levelup');
-    setTimeout(()=>ov.setAttribute('hidden',''),4000);
+/* ═══════════════════════════════════════════════════════════════════
+   TREASURY ACTIONS
+   ═══════════════════════════════════════════════════════════════════ */
+async function logTransaction() {
+    const amount = parseFloat(document.getElementById('tr-amount')?.value);
+    const desc   = document.getElementById('tr-desc')?.value||'';
+    const type   = document.getElementById('tr-type')?.value||'sustenance';
+    const dir    = document.getElementById('tr-direction')?.value||'expense';
+    if (!amount||isNaN(amount)) return;
+    const btn = document.getElementById('tr-submit-btn');
+    if (btn) { btn.textContent='LOGGING...'; btn.disabled=true; }
+    try {
+        await fetch('/api/treasury/transactions/add',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({amount,description:desc,asset_type:type,direction:dir}),
+        });
+        document.getElementById('tr-amount').value='';
+        document.getElementById('tr-desc').value='';
+        await fetchTreasury();
+    } catch(e) {}
+    if (btn) { btn.textContent='LOG TRANSACTION'; btn.disabled=false; }
 }
 
-// ═══════════════════════════════════════════════════
-// MOUSE GLOW + PARALLAX
-// ═══════════════════════════════════════════════════
-function initMouseGlow() {
-    const glow=document.getElementById('mouse-glow');
-    document.addEventListener('mousemove',e=>{
-        mouseX=e.clientX/innerWidth;
-        mouseY=e.clientY/innerHeight;
-        if(glow){ glow.style.left=e.clientX+'px'; glow.style.top=e.clientY+'px'; }
-        // Update avatar parallax (done in updateAvatarCanvas via mouseX/Y)
+async function updateBudget() {
+    const income = parseFloat(document.getElementById('tr-income-input')?.value);
+    if (!income||isNaN(income)) return;
+    try {
+        await fetch('/api/treasury/budget/update',{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({monthly_income:income,currency:'R'}),
+        });
+        await fetchTreasury();
+    } catch(e) {}
+}
+
+async function runAudit() {
+    const c = document.getElementById('audit-console');
+    if (c) c.innerHTML = '<span style="color:var(--gold)">RUNNING AUDIT...<span style="animation:blink 1s step-end infinite">█</span></span>';
+    try {
+        const r = await fetch('/api/treasury/audit/run',{method:'POST'});
+        const d = await r.json();
+        if (c && d.audit) {
+            c.innerHTML='';
+            d.audit.split('\n').forEach((line,i)=>{
+                setTimeout(()=>{
+                    const div=document.createElement('div');
+                    div.style.lineHeight='1.8';
+                    div.innerHTML=line.replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--gold)">$1</strong>');
+                    c.appendChild(div); c.scrollTop=c.scrollHeight;
+                },i*35);
+            });
+        }
+    } catch(e) { if (c) c.innerHTML='<span style="color:var(--red)">AUDIT FAILED</span>'; }
+}
+
+async function scanOpportunities() {
+    const feed=document.getElementById('opp-feed');
+    if (feed) feed.innerHTML='<div style="color:var(--p4);font-family:var(--f-mono);font-size:.62rem">SCANNING...</div>';
+    try {
+        const r=await fetch('/api/opportunities/scan',{method:'POST'});
+        const d=await r.json();
+        const opps=d.opportunities||[];
+        if (feed) {
+            feed.innerHTML='';
+            opps.forEach(opp=>{
+                const card=document.createElement('div'); card.className='opp-card';
+                card.innerHTML=`<div class="opp-title">◎ ${opp.title||'Opportunity'}</div>
+                    <div class="opp-body">${opp.service_solution||opp.loophole_summary||''}</div>
+                    <button class="opp-accept" onclick="acceptOpp(${opp.id})">⚔ ACCEPT CONTRACT</button>`;
+                feed.appendChild(card);
+            });
+            if (!opps.length) feed.innerHTML='<div class="dim-text" style="font-family:var(--f-mono);font-size:.6rem">No opportunities found — try later</div>';
+        }
+    } catch(e) { if (feed) feed.innerHTML='<div style="color:var(--red);font-family:var(--f-mono);font-size:.6rem">SCAN FAILED</div>'; }
+}
+
+async function acceptOpp(id) {
+    try {
+        const r=await fetch('/api/opportunities/accept',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({opportunity_id:id})});
+        const d=await r.json();
+        if (d.success) { await fetchStats(); }
+    } catch(e){}
+}
+
+async function refreshIntelFeed() {
+    const feed=document.getElementById('intel-feed');
+    if (!feed) return;
+    try {
+        const r=await fetch('/api/opportunities/latest');
+        const d=await r.json();
+        if (!Array.isArray(d)||!d.length) { feed.innerHTML='<div class="dim-text">NO INTEL AVAILABLE</div>'; return; }
+        feed.innerHTML='';
+        d.forEach(item=>{
+            const card=document.createElement('div'); card.className='intel-card';
+            card.innerHTML=`<div class="intel-card-title">◉ ${item.title||'Record'}</div>${item.loophole_summary||item.service_solution||'—'}`;
+            feed.appendChild(card);
+        });
+    } catch(e) { feed.innerHTML='<div class="dim-text">NETWORK UNREACHABLE</div>'; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   NAV + OVERLAY
+   ═══════════════════════════════════════════════════════════════════ */
+function initNavDock() {
+    document.querySelectorAll('.nav-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+            document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            openOverlay(btn.dataset.view);
+        });
     });
 }
 
-// ═══════════════════════════════════════════════════
-// LIVE CLOCK
-// ═══════════════════════════════════════════════════
+function openOverlay(view) {
+    G.currentView = view;
+    ['treasury','quests','intel','system'].forEach(id=>{
+        const el=document.getElementById(`overlay-${id}`);
+        if (el) el.hidden=true;
+    });
+    if (view==='hud') return;
+    const ov=document.getElementById(`overlay-${view}`);
+    if (ov) {
+        ov.hidden=false;
+        if (view==='treasury') { initCapitalReactor(); }
+        if (view==='intel')    { initIntelGlobe(); refreshIntelFeed(); }
+        if (view==='system')   { buildSystemGrid(); }
+        if (view==='quests')   { renderQuestGrid(G.quests); }
+    }
+}
+
+function closeOverlay(id) {
+    const ov=document.getElementById(`overlay-${id}`);
+    if (ov) ov.hidden=true;
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('dock-hud')?.classList.add('active');
+    G.currentView='hud';
+}
+
+function initQuestFilters() {
+    document.querySelectorAll('.qf-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+            document.querySelectorAll('.qf-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            const grid=document.getElementById('all-quest-grid');
+            if (grid) grid.dataset.filter=btn.dataset.filter;
+            renderQuestGrid(G.quests);
+        });
+    });
+}
+
+function buildSystemGrid() {
+    const grid=document.getElementById('sys-grid');
+    if (!grid) return;
+    grid.innerHTML='';
+    const mods=[
+        {id:'neural',   name:'NEURAL ENGINE',   desc:'Cognitive processing core', online:true},
+        {id:'voice',    name:'VOICE AI',         desc:'J.A.R.V.I.S. module', online:true},
+        {id:'quest',    name:'QUEST ENGINE',     desc:'Daily contract generator', online:true},
+        {id:'treasury', name:'TREASURY',         desc:'Capital reactor & finance AI', online:true},
+        {id:'storage',  name:'STORAGE',          desc:'SQLite neural memory', online:true},
+        {id:'scraper',  name:'INTEL SCRAPER',    desc:'Market surveillance feeds', online:true},
+        {id:'auto',     name:'AUTOMATION',       desc:'OS macro scheduler', online:false},
+        {id:'cloud',    name:'CLOUD SYNC',       desc:'Backup & cross-device sync', online:false},
+    ];
+    mods.forEach(m=>{
+        const card=document.createElement('div'); card.className='sys-card';
+        card.innerHTML=`
+            <div class="sys-card-head">
+                <div class="sys-status ${m.online?'online':'offline'}"></div>
+                <div class="sys-name">${m.name}</div>
+            </div>
+            <div class="sys-desc">${m.desc}</div>
+            <div class="sys-ping">${m.online?'● ONLINE':'○ OFFLINE'}</div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOUSE TRACKING
+   ═══════════════════════════════════════════════════════════════════ */
+function initMouseGlow() {
+    window.addEventListener('mousemove', ev=>{
+        G.mouseX = ev.clientX/innerWidth;
+        G.mouseY = ev.clientY/innerHeight;
+    });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CLOCK
+   ═══════════════════════════════════════════════════════════════════ */
 function initClock() {
-    const el=document.getElementById('sys-clock');
-    const tick=()=>{
-        if(!el)return;
+    const tick = ()=>{
         const n=new Date();
-        el.textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+        setText('top-clock',`${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`);
     };
     tick(); setInterval(tick,1000);
 }
+const pad = n=>String(n).padStart(2,'0');
 
-// ═══════════════════════════════════════════════════
-// WEB AUDIO API
-// ═══════════════════════════════════════════════════
-function getACtx(){if(!audioCtx)try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return null;}return audioCtx;}
-
-function playUISound(type){
-    const ctx=getACtx(); if(!ctx)return;
-    const now=ctx.currentTime;
-    const mg=ctx.createGain(); mg.gain.setValueAtTime(0.05,now); mg.connect(ctx.destination);
-    const mk=(freq,wave,dur,gain=0.05)=>{
-        const o=ctx.createOscillator(),g=ctx.createGain();
-        o.type=wave; o.frequency.setValueAtTime(freq,now);
-        g.gain.setValueAtTime(gain,now); g.gain.exponentialRampToValueAtTime(0.001,now+dur);
-        o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now+dur+0.01);
-    };
-    if(type==='click'){mk(900,'square',0.05);}
-    else if(type==='complete'){[440,554,659].forEach((f,i)=>{setTimeout(()=>mk(f,'sine',0.28,0.07),i*110);});}
-    else if(type==='levelup'){
-        const o=ctx.createOscillator(),g=ctx.createGain();
-        o.type='sawtooth'; o.frequency.setValueAtTime(110,now); o.frequency.exponentialRampToValueAtTime(880,now+0.9);
-        g.gain.setValueAtTime(0.07,now); g.gain.exponentialRampToValueAtTime(0.001,now+1.1);
-        o.connect(g); g.connect(ctx.destination); o.start(now); o.stop(now+1.1);
-        mk(55,'sine',0.5,0.12);
-    }
-    else if(type==='error'){mk(300,'sawtooth',0.25);}
-    else if(type==='boot'){[100,200,300,250,450].forEach((f,i)=>{setTimeout(()=>mk(f,'sine',0.12,0.05),i*90);});}
+/* ═══════════════════════════════════════════════════════════════════
+   AUDIO
+   ═══════════════════════════════════════════════════════════════════ */
+function getAudio() {
+    if (!G.audioCtx) { try { G.audioCtx=new(AudioContext||webkitAudioContext)(); }catch(e){} }
+    return G.audioCtx;
+}
+function playBootSound() {
+    const ctx=getAudio(); if(!ctx) return;
+    [220,330,440,660].forEach((f,i)=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value=f; o.type='sine';
+        const t=ctx.currentTime+i*0.12;
+        g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.05,t+0.05); g.gain.linearRampToValueAtTime(0,t+0.35);
+        o.start(t); o.stop(t+0.4);
+    });
+}
+function playLevelUpSound() {
+    const ctx=getAudio(); if(!ctx) return;
+    [261,329,392,523,659,784,1047].forEach((f,i)=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value=f; o.type='triangle';
+        const t=ctx.currentTime+i*0.09;
+        g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.1,t+0.05); g.gain.linearRampToValueAtTime(0,t+0.4);
+        o.start(t); o.stop(t+0.5);
+    });
 }
 
-// ═══════════════════════════════════════════════════
-// RESIZE
-// ═══════════════════════════════════════════════════
-window.addEventListener('resize',()=>{
-    resizeBgRenderer();
-    const av=document.getElementById('avatar-canvas');
-    if(av&&avRenderer){avRenderer.setSize(av.clientWidth,av.clientHeight);avCamera.aspect=av.clientWidth/av.clientHeight;avCamera.updateProjectionMatrix();}
-    const xp=document.getElementById('xp-canvas'); if(xp) xp.width=xp.clientWidth||400;
-    const ds=document.getElementById('data-stream-canvas'); if(ds){ds.width=ds.offsetWidth||290;ds.height=ds.offsetHeight||800;}
-});
-window.addEventListener('load',()=>{
-    const xp=document.getElementById('xp-canvas'); if(xp) xp.width=xp.clientWidth||400;
-});
+/* ═══════════════════════════════════════════════════════════════════
+   XP PARTICLES
+   ═══════════════════════════════════════════════════════════════════ */
+function spawnXPParticles(xp, ev) {
+    const x=ev?.clientX||innerWidth/2, y=ev?.clientY||innerHeight/2;
+    for (let i=0;i<5;i++) {
+        const s=document.createElement('div');
+        s.className='xp-particle';
+        s.textContent=`+${Math.round(xp/5)} XP`;
+        s.style.left=x+(Math.random()-.5)*50+'px';
+        s.style.top=y+(Math.random()-.5)*30+'px';
+        s.style.setProperty('--dx',(Math.random()-.5)*80+'px');
+        s.style.setProperty('--dy',-(60+Math.random()*60)+'px');
+        s.style.animationDelay=i*0.08+'s';
+        document.body.appendChild(s);
+        setTimeout(()=>s.remove(),1500);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   UTILS
+   ═══════════════════════════════════════════════════════════════════ */
+function setText(id,val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+function setWidth(id,pct) { const el=document.getElementById(id); if(el) el.style.width=Math.min(Math.max(pct,0),100)+'%'; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MASTER ANIMATION LOOP
+   ═══════════════════════════════════════════════════════════════════ */
+function masterLoop(ts) {
+    drawBgStars(ts);
+    drawAvatar(ts);
+    drawRadar(ts);
+    // Redraw potions with pulse
+    if (Math.floor(ts/500) % 2 === 0) drawPotions();
+    if (G.currentView==='treasury') drawReactor(ts);
+    if (G.currentView==='intel')    drawIntelGlobe(ts);
+    requestAnimationFrame(masterLoop);
+}

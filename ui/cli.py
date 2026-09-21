@@ -24,7 +24,8 @@ def print_menu() -> None:
     print("8. Start Web HUD Dashboard")
     print("9. Developer Tools")
     print("10. Force Cloud Sync")
-    print("11. Exit")
+    print("11. Treasury & Arbitrage Protocol")
+    print("12. Exit")
     print()
 
 
@@ -124,10 +125,15 @@ def handle_choice(choice: str) -> bool:
         return True
 
     if choice == "11":
+        from ui.treasury_cli import run_treasury_cli
+        run_treasury_cli()
+        return True
+
+    if choice == "12":
         print("Exiting Apex Ghost menu.")
         return False
 
-    print("Invalid choice. Please select a number from 1 to 11.")
+    print("Invalid choice. Please select a number from 1 to 12.")
     return True
 
 

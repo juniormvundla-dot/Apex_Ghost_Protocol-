@@ -37,6 +37,8 @@ class ProjectPaths:
         This is useful during startup so the program can fail early
         if the project structure is broken.
         """
+        self.assets_dir.mkdir(parents=True, exist_ok=True)
+
         required_dirs = [
             self.project_root,
             self.assets_dir,

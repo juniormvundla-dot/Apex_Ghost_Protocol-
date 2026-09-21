@@ -258,3 +258,36 @@ ModuleNotFoundError: No module named 'requests'
 2026-07-31 10:57:56 | INFO | ApexGhostSystem | Project paths and database verified successfully.
 2026-07-31 10:57:57 | INFO | ApexGhostSystem | Starting Apex Ghost CLI menu...
 2026-07-31 11:30:13 | INFO | ApexGhostSystem | Apex Ghost stopped by user.
+2026-09-20 15:08:52 | INFO | ApexGhostSystem | Logging system initialized.
+2026-09-20 15:08:52 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-09-20 15:08:52 | ERROR | ApexGhostSystem | Fatal error in main(): Required folder not found: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\assets
+Traceback (most recent call last):
+  File "c:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\main.py", line 29, in main
+    paths.ensure_exists()
+  File "c:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\core\paths.py", line 49, in ensure_exists
+    raise FileNotFoundError(f"Required folder not found: {folder}")
+FileNotFoundError: Required folder not found: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\assets
+2026-09-20 15:11:55 | INFO | ApexGhostSystem | Logging system initialized.
+2026-09-20 15:11:55 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-09-20 15:11:55 | ERROR | ApexGhostSystem | Fatal error in main(): Required folder not found: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\assets
+Traceback (most recent call last):
+  File "C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\main.py", line 29, in main
+    paths.ensure_exists()
+  File "C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\core\paths.py", line 49, in ensure_exists
+    raise FileNotFoundError(f"Required folder not found: {folder}")
+FileNotFoundError: Required folder not found: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\assets
+2026-09-20 15:12:49 | INFO | ApexGhostSystem | Logging system initialized.
+2026-09-20 15:12:49 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-09-20 15:12:49 | INFO | ApexGhostSystem | Project paths and database verified successfully.
+2026-09-20 15:15:42 | INFO | ApexGhostSystem | Logging system initialized.
+2026-09-20 15:15:42 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-09-20 15:15:42 | INFO | ApexGhostSystem | Project paths and database verified successfully.
+2026-09-20 15:15:48 | INFO | ApexGhostSystem | Starting Apex Ghost CLI menu...
+2026-09-21 09:16:28 | INFO | ApexGhostSystem | Logging system initialized.
+2026-09-21 09:16:28 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-09-21 09:16:28 | INFO | ApexGhostSystem | Project paths and database verified successfully.
+2026-09-21 09:16:29 | INFO | ApexGhostSystem | Starting Apex Ghost CLI menu...
+2026-09-21 11:08:55 | INFO | ApexGhostSystem | Logging system initialized.
+2026-09-21 11:08:55 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-09-21 11:08:55 | INFO | ApexGhostSystem | Project paths and database verified successfully.
+2026-09-21 11:08:56 | INFO | ApexGhostSystem | Starting Apex Ghost CLI menu...

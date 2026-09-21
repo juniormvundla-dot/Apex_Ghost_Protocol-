@@ -24,6 +24,10 @@ from quests.service import quest_service
 from quests.models import QuestStatus, QuestCategory
 from storage.repositories import quest_repository
 from storage.db import database_manager
+from core.treasury_service import treasury_service
+from core.treasury_models import TreasuryTransaction, BudgetRules
+from voice.treasury_brain import generate_spending_audit
+from scrapers.opportunity_hunter import opportunity_hunter
 
 PORT = 5000
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -141,6 +145,12 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             self.serve_intelligence_latest()
         elif self.path.startswith("/api/journal/latest"):
             self.serve_journal_latest()
+        elif self.path.startswith("/api/treasury/summary"):
+            self.serve_treasury_summary()
+        elif self.path.startswith("/api/treasury/transactions"):
+            self.serve_treasury_transactions()
+        elif self.path.startswith("/api/opportunities/latest"):
+            self.serve_opportunities_latest()
         else:
             clean_path = self.path.split("?")[0]
             if clean_path == "/" or clean_path == "":
@@ -154,6 +164,16 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             self.handle_action_run()
         elif self.path.startswith("/api/goals/setup"):
             self.handle_goals_setup()
+        elif self.path.startswith("/api/treasury/transactions/add"):
+            self.handle_treasury_add_transaction()
+        elif self.path.startswith("/api/treasury/audit/run"):
+            self.handle_treasury_run_audit()
+        elif self.path.startswith("/api/treasury/budget/update"):
+            self.handle_treasury_update_budget()
+        elif self.path.startswith("/api/opportunities/scan"):
+            self.handle_opportunities_scan()
+        elif self.path.startswith("/api/opportunities/accept"):
+            self.handle_opportunities_accept()
         else:
             self.send_error(404, "Endpoint not found")
 
@@ -558,6 +578,229 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"status": "success", "message": "Goals plan configured and database synced."}).encode("utf-8"))
 
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def serve_treasury_summary(self):
+        try:
+            report = treasury_service.calculate_health_report()
+            rules = treasury_service.get_budget_rules()
+            data = {
+                "currency": report.currency,
+                "monthly_income": report.monthly_income,
+                "total_expenses": report.total_expenses,
+                "net_cashflow": report.net_cashflow,
+                "asset_total": report.asset_total,
+                "asset_pct": report.asset_pct,
+                "sustenance_total": report.sustenance_total,
+                "sustenance_pct": report.sustenance_pct,
+                "liability_total": report.liability_total,
+                "liability_pct": report.liability_pct,
+                "waste_total": report.waste_total,
+                "waste_pct": report.waste_pct,
+                "monthly_burn_rate": report.monthly_burn_rate,
+                "runway_months": report.runway_months,
+                "kiyosaki_ratio": report.kiyosaki_ratio,
+                "musk_frugality_score": report.musk_frugality_score,
+                "rule_violations": report.rule_violations,
+                "targets": {
+                    "asset_target_pct": rules.asset_target_pct,
+                    "sustenance_target_pct": rules.sustenance_target_pct,
+                    "skill_capital_pct": rules.skill_capital_pct,
+                    "runway_buffer_pct": rules.runway_buffer_pct,
+                    "waste_tolerance_pct": rules.waste_tolerance_pct,
+                }
+            }
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(data).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def serve_treasury_transactions(self):
+        try:
+            transactions = treasury_service.get_transactions(limit=60)
+            data = [
+                {
+                    "id": t.id,
+                    "transaction_date": t.transaction_date,
+                    "title": t.title,
+                    "amount": t.amount,
+                    "category": t.category,
+                    "transaction_type": t.transaction_type,
+                    "asset_classification": t.asset_classification,
+                    "necessity_score": t.necessity_score,
+                    "is_recurring": t.is_recurring,
+                    "notes": t.notes,
+                }
+                for t in transactions
+            ]
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(data).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def serve_opportunities_latest(self):
+        try:
+            opps = treasury_service.get_opportunities()
+            data = [
+                {
+                    "id": o.id,
+                    "title": o.title,
+                    "industry": o.industry,
+                    "loophole_summary": o.loophole_summary,
+                    "service_solution": o.service_solution,
+                    "target_client": o.target_client,
+                    "pricing_model": o.pricing_model,
+                    "action_steps": o.action_steps,
+                    "status": o.status,
+                    "created_at": o.created_at,
+                }
+                for o in opps
+            ]
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(data).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def handle_treasury_add_transaction(self):
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8")
+            payload = json.loads(body)
+
+            tx = TreasuryTransaction(
+                id=None,
+                transaction_date=payload.get("transaction_date") or date.today().strftime("%Y-%m-%d"),
+                title=payload.get("title", "Expense"),
+                amount=float(payload.get("amount", 0.0)),
+                category=payload.get("category", "General"),
+                transaction_type=payload.get("transaction_type", "expense"),
+                asset_classification=payload.get("asset_classification", "sustenance"),
+                necessity_score=int(payload.get("necessity_score", 5)),
+                is_recurring=bool(payload.get("is_recurring", False)),
+                notes=payload.get("notes", ""),
+            )
+            tx_id = treasury_service.add_transaction(tx)
+            add_web_log(f"[TREASURY] Logged {tx.transaction_type.upper()}: {tx.title} (${tx.amount:,.2f}) [{tx.asset_classification.upper()}]")
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "id": tx_id}).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def handle_treasury_run_audit(self):
+        try:
+            add_web_log("[TREASURY] Initiating Gemini First-Principles spending audit...")
+            report = treasury_service.calculate_health_report()
+            transactions = treasury_service.get_transactions(limit=40)
+            audit_critique = generate_spending_audit(report, transactions)
+            add_web_log("[TREASURY] Financial audit compiled successfully.")
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "audit": audit_critique}).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def handle_treasury_update_budget(self):
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8")
+            payload = json.loads(body)
+
+            rules = treasury_service.get_budget_rules()
+            if "monthly_income" in payload:
+                rules.monthly_income = float(payload["monthly_income"])
+            if "currency" in payload:
+                rules.currency = str(payload["currency"])
+            if "asset_target_pct" in payload:
+                rules.asset_target_pct = float(payload["asset_target_pct"])
+
+            treasury_service.update_budget_rules(rules)
+            add_web_log(f"[TREASURY] Budget targets updated: Income {rules.currency}{rules.monthly_income:,.2f}")
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success"}).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def handle_opportunities_scan(self):
+        try:
+            add_web_log("[ARBITRAGE] Scanning live market signals and technology loopholes...")
+            opps = opportunity_hunter.scan_opportunities()
+            add_web_log(f"[ARBITRAGE] Market scan complete: {len(opps)} opportunities surfaced.")
+
+            data = [
+                {
+                    "id": o.id,
+                    "title": o.title,
+                    "industry": o.industry,
+                    "loophole_summary": o.loophole_summary,
+                    "service_solution": o.service_solution,
+                    "target_client": o.target_client,
+                    "pricing_model": o.pricing_model,
+                    "action_steps": o.action_steps,
+                    "status": o.status,
+                }
+                for o in opps
+            ]
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "opportunities": data}).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def handle_opportunities_accept(self):
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8")
+            payload = json.loads(body)
+            opp_id = int(payload.get("opp_id", 0))
+
+            created_quests = treasury_service.convert_opportunity_to_quests(opp_id)
+            for q in created_quests:
+                add_web_log(f"[ARBITRAGE CONTRACT] Generated Quest: {q}")
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "quests": created_quests}).encode("utf-8"))
         except Exception as e:
             self.send_response(500)
             self.send_header("Content-Type", "application/json")

@@ -177,6 +177,64 @@ class DatabaseManager:
         )
         self.execute("INSERT OR IGNORE INTO player_attributes (id, strength, intelligence, agility, discipline) VALUES (1, 10, 10, 10, 10)")
 
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS treasury_transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                transaction_date TEXT NOT NULL,
+                title TEXT NOT NULL,
+                amount REAL NOT NULL,
+                category TEXT NOT NULL,
+                transaction_type TEXT NOT NULL,
+                asset_classification TEXT NOT NULL,
+                necessity_score INTEGER DEFAULT 5,
+                is_recurring INTEGER DEFAULT 0,
+                notes TEXT,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS treasury_budget_rules (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                monthly_income REAL NOT NULL DEFAULT 0.0,
+                currency TEXT NOT NULL DEFAULT 'R',
+                asset_target_pct REAL NOT NULL DEFAULT 30.0,
+                sustenance_target_pct REAL NOT NULL DEFAULT 40.0,
+                skill_capital_pct REAL NOT NULL DEFAULT 15.0,
+                runway_buffer_pct REAL NOT NULL DEFAULT 15.0,
+                waste_tolerance_pct REAL NOT NULL DEFAULT 0.0,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        self.execute(
+            """
+            INSERT OR IGNORE INTO treasury_budget_rules 
+            (id, monthly_income, currency, asset_target_pct, sustenance_target_pct, skill_capital_pct, runway_buffer_pct, waste_tolerance_pct, updated_at) 
+            VALUES (1, 30000.0, 'R', 30.0, 40.0, 15.0, 15.0, 0.0, datetime('now'))
+            """
+        )
+
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS market_opportunities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                industry TEXT NOT NULL,
+                loophole_summary TEXT NOT NULL,
+                service_solution TEXT NOT NULL,
+                target_client TEXT NOT NULL,
+                pricing_model TEXT NOT NULL,
+                action_steps TEXT,
+                status TEXT NOT NULL DEFAULT 'scanned',
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+
         self._migrate_quest_columns()
 
     def _migrate_quest_columns(self) -> None:
