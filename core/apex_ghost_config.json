@@ -54,5 +54,10 @@
     "offer_private_mode": true,
     "offer_intelligence_brief": false,
     "interactive_quest_completion": true
+  },
+  "cloud_backup": {
+    "enable_aws_sync": true,
+    "aws_bucket_name": "apex-ghost-vault-junior",
+    "aws_region": "us-east-1"
   }
 }

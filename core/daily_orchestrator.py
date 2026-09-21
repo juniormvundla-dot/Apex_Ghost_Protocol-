@@ -68,6 +68,12 @@ class DailyOrchestrator:
             ran_intelligence_brief = self._maybe_run_intelligence_brief()
 
         print("\nDaily protocol complete.")
+        try:
+            from automation.cloud_sync import perform_cloud_sync
+            perform_cloud_sync()
+        except Exception as e:
+            print(f"[Daily Protocol] Cloud sync warning: {e}")
+
         return DailyRunResult(
             quests=quests,
             coach_feedback=coach_feedback,

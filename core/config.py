@@ -91,6 +91,7 @@ class ApexGhostConfig:
             awakening=AwakeningConfig(**data.get("awakening", {})),
             private_mode=PrivateModeConfig(**data.get("private_mode", {})),
             daily_flow=DailyFlowConfig(**data.get("daily_flow", {})),
+            cloud_backup=CloudBackupConfig(**data.get("cloud_backup", {})),
         )
 
     def save(self) -> None:
@@ -98,6 +99,7 @@ class ApexGhostConfig:
             "awakening": asdict(self.awakening),
             "private_mode": asdict(self.private_mode),
             "daily_flow": asdict(self.daily_flow),
+            "cloud_backup": asdict(self.cloud_backup),
         }
         self.config_path.write_text(
             json.dumps(payload, indent=2),

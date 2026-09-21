@@ -485,6 +485,11 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
                     execute_background_job(run_scraper_job, "Scrape Intel Brief")
                     message = "Intelligence brief collector initialized."
 
+                elif action == "cloud_sync":
+                    from automation.cloud_sync import perform_cloud_sync
+                    execute_background_job(perform_cloud_sync, "AWS Cloud Sync")
+                    message = "AWS Cloud Sync backup initiated."
+
                 else:
                     self.send_error(400, f"Unknown action: {action}")
                     return
