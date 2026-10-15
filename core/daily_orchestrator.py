@@ -46,6 +46,17 @@ class DailyOrchestrator:
         print("APEX GHOST - DAILY PROTOCOL")
         print("==============================")
 
+        # ── ACCOUNTABILITY GATE ───────────────────────────────────────────────
+        # If the hunter failed 3+ consecutive days, they must submit a written
+        # accountability statement before the system proceeds. No exceptions.
+        try:
+            from automation.midnight_enforcer import check_accountability_gate
+            if not check_accountability_gate():
+                print("\n[Orchestrator] Penalty Zone active. System locked until debt is cleared.")
+                import sys; sys.exit(1)
+        except ImportError:
+            pass  # Enforcer not yet loaded — proceed normally
+
         missed_wake_up = self._maybe_run_awakening()
         xp_system.mark_active_day(date.today())
 
@@ -86,22 +97,28 @@ class DailyOrchestrator:
             return False
 
         if config.awakening.skip_if_already_ran and self.awakening.already_ran_today():
-            print("\nAwakening already completed today. Skipping video sequence.")
+            print("\n[Orchestrator] Awakening already completed today. Continuing protocol.")
             return False
 
+        # ── AUTO MODE (default for Task Scheduler / daemon runs) ──────────────
+        # The hunter cannot skip this. It fires immediately.
+        if getattr(config.awakening, "auto_launch", True):
+            print("\n[Orchestrator] Auto-launching awakening sequence — no opt-out.")
+            self.awakening.run()
+            return False
+
+        # ── INTERACTIVE MODE (only when auto_launch=False) ────────────────────
+        # Allowed for manual CLI runs where the user is already at the terminal.
         choice = input("\nRun Morning Awakening now? [Y/n]: ").strip().lower()
         if choice in ("", "y", "yes"):
             self.awakening.run()
             return False
 
-        if choice in ("n", "no"):
-            xp_system.record_missed_wake_up()
-            print("Awakening skipped. Coach will factor this into tomorrow's difficulty.")
-            return True
-
-        print("Invalid input. Skipping awakening.")
+        # Hunter chose to skip — record the penalty and flag the coach
         xp_system.record_missed_wake_up()
+        print("[Orchestrator] Awakening skipped. Penalty logged. Coach will increase tomorrow's difficulty.")
         return True
+
 
     def _interactive_quest_loop(self, quests: list) -> None:
         pending = [quest for quest in quests if quest.status == QuestStatus.PENDING]

@@ -291,3 +291,12 @@ FileNotFoundError: Required folder not found: C:\Users\tmvundla\Documents\Person
 2026-09-21 11:08:55 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
 2026-09-21 11:08:55 | INFO | ApexGhostSystem | Project paths and database verified successfully.
 2026-09-21 11:08:56 | INFO | ApexGhostSystem | Starting Apex Ghost CLI menu...
+2026-09-21 14:51:48 | INFO | ApexGhostSystem | Logging system initialized.
+2026-09-21 14:51:48 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-09-21 14:51:48 | INFO | ApexGhostSystem | Project paths and database verified successfully.
+2026-09-21 14:51:48 | INFO | ApexGhostSystem | Starting Apex Ghost CLI menu...
+2026-10-02 11:48:29 | INFO | ApexGhostSystem | Logging system initialized.
+2026-10-02 11:48:29 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-10-02 11:48:29 | INFO | ApexGhostSystem | Project paths and database verified successfully.
+2026-10-02 11:48:30 | INFO | ApexGhostSystem | Starting Apex Ghost CLI menu...
+2026-10-05 10:44:38 | INFO | ApexGhostSystem | Apex Ghost stopped by user.

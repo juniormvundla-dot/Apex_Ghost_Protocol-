@@ -1,46 +1,57 @@
 from __future__ import annotations
 
-# This file contains the Morning Awakening Protocol.
-# It plays a fixed sequence of motivational videos from the assets folder.
-# VLC is used so each video finishes before the next one starts.
+# APEX GHOST — AWAKENING ENGINE
+# Force UTF-8 output so symbols print correctly on Windows terminals
+import sys
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Phase 1 of the daily protocol. Fires automatically at the configured wake
+# hour via Windows Task Scheduler (register_apex_task.ps1).
+#
+# Sequence:
+#   1. Ramp system volume from quiet → full to break sleep inertia
+#   2. Play each motivational video in the queue back-to-back via VLC
+#   3. After videos complete, deliver J.A.R.V.I.S. morning briefing (TTS)
+#   4. Mark today as awakened so the sequence does not repeat
+#
+# Design philosophy:
+#   - NO PROMPTS. When auto_launch=True (the default), this fires and cannot
+#     be skipped by the hunter. Skipping is not an option; it is a failure.
+#   - If the hunter kills the process, the penalty system applies at 23:59.
+# ──────────────────────────────────────────────────────────────────────────────
 
 from dataclasses import dataclass
 from pathlib import Path
 import subprocess
+import sys
+import time
 from datetime import date
 
-import sys
-from pathlib import Path
-
-# Add project root to sys.path to allow running this script directly
+# Allow running this file directly from CLI
 project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from core.config import config
-import time
 from voice.tts import speak_text
 from voice.script_builder import build_morning_awakening_script
 
 
 @dataclass(frozen=True)
 class AwakeningVideo:
-    # A simple data structure that stores one video in the awakening queue.
-    # name = friendly label for logs
-    # filename = actual file stored in /assets
-    name: str
-    filename: str
+    """One entry in the awakening video queue."""
+    name: str       # Friendly label for logs
+    filename: str   # Actual filename inside /assets
 
 
 class MorningAwakeningProtocol:
     """
-    This class controls the phase 1 awakening sequence.
+    Controls the Phase 1 morning awakening sequence.
 
-    Responsibilities:
-    - find video files inside the assets folder
-    - launch them in order
-    - optionally ask for proof of life
-    - remember if the protocol already ran today
+    On a Task Scheduler trigger this fires with zero human input.
+    The hunter cannot opt out — they can only complete it or fail it.
     """
 
     def __init__(
@@ -48,99 +59,94 @@ class MorningAwakeningProtocol:
         assets_dir: Path | None = None,
         vlc_path: str | None = None,
     ) -> None:
-        # Resolve the project root by moving one level above /automation
         self.project_root = Path(__file__).resolve().parent.parent
+        self.assets_dir   = assets_dir or (self.project_root / "assets")
+        self.state_file   = self.project_root / "core" / ".awakening_state.txt"
+        self.vlc_path  = Path(vlc_path or config.awakening.vlc_path)
 
-        # If no assets_dir is given, use the default /assets folder in the project root
-        self.assets_dir = assets_dir or (self.project_root / "assets")
+        # Path to the asset registry JSON
+        self.asset_registry = self.project_root / "assets" / "awakening_assets.json"
 
-        # This file is used to store the date of the last successful awakening run
-        self.state_file = self.project_root / "core" / ".awakening_state.txt"
+        # ── VIDEO QUEUE ───────────────────────────────────────────────────────
+        # Loaded from assets/awakening_assets.json at runtime.
+        # Falls back to the hardcoded list below if the JSON has no paths set.
+        # ─────────────────────────────────────────────────────────────────────
+        self.video_queue: list[AwakeningVideo] = self._load_video_queue()
 
-        self.vlc_path = Path(vlc_path or config.awakening.vlc_path)
+    # ── ASSET REGISTRY ────────────────────────────────────────────────────────
 
-        # Define the awakening queue here.
-        # Change filenames here if your actual asset names change later.
-        self.video_queue: list[AwakeningVideo] = [
-            AwakeningVideo(
-                name="Goggins Wake-Up Blast",
-                filename="5-MINUTE-AUDIO-FOR-GYMRAT.mp4",
-            ),
-            AwakeningVideo(
-                name="Batman Discipline Shift",
-                filename="BREAK-YOUR-LIMIT.mp4",
-            ),
-            AwakeningVideo(
-                name="Kill the Boy, Let the Man Be Born",
-                filename="KILL-THE-BOY-AND-LET-THE-MAN-BE-BORN.mp4",
-            ),
-            AwakeningVideo(
-                name="Solo Leveling Final Push",
-                filename="SOLO-LEVELING.mp4",
-            ),
-            AwakeningVideo(
-                name="They Don't Know Me Son",
-                filename="THEY-DON-T-KNOW-ME-SON.mp4",
-            ),
+    def _load_video_queue(self) -> list[AwakeningVideo]:
+        """
+        Load the video queue from assets/awakening_assets.json.
+
+        Each entry needs a non-empty 'path' and 'enabled': true.
+        Falls back to the legacy /assets folder filenames if the registry
+        has no configured paths yet (first-run or missing file).
+        """
+        import json
+
+        # ── Try JSON registry first ───────────────────────────────────────────
+        if self.asset_registry.exists():
+            try:
+                data = json.loads(self.asset_registry.read_text(encoding="utf-8"))
+                entries = data.get("videos", [])
+                configured = [
+                    AwakeningVideo(name=e["name"], filename=e["path"])
+                    for e in entries
+                    if e.get("enabled", True) and e.get("path", "").strip()
+                ]
+                if configured:
+                    print(f"[Awakening] Loaded {len(configured)} video(s) from asset registry.")
+                    return configured
+                else:
+                    print("[Awakening] Asset registry found but no paths are set yet.")
+                    print(f"  --> Edit: {self.asset_registry}")
+            except Exception as exc:
+                print(f"[Awakening] Could not parse asset registry: {exc}")
+        else:
+            print(f"[Awakening] No asset registry found at {self.asset_registry}")
+
+        # ── Fallback: look for files directly in /assets by legacy names ──────
+        print("[Awakening] Falling back to legacy /assets filename lookup.")
+        return [
+            AwakeningVideo(name="Goggins Wake-Up Blast",            filename="5-MINUTE-AUDIO-FOR-GYMRAT.mp4"),
+            AwakeningVideo(name="Batman Discipline Shift",           filename="BREAK-YOUR-LIMIT.mp4"),
+            AwakeningVideo(name="Kill the Boy, Let the Man Be Born", filename="KILL-THE-BOY-AND-LET-THE-MAN-BE-BORN.mp4"),
+            AwakeningVideo(name="Solo Leveling Final Push",          filename="SOLO-LEVELING.mp4"),
+            AwakeningVideo(name="They Don't Know Me Son",            filename="THEY-DON-T-KNOW-ME-SON.mp4"),
         ]
 
     def _load_last_run_date(self) -> str | None:
-        """
-        Read the last run date from the state file.
-        """
         if not self.state_file.exists():
             return None
-
         try:
             return self.state_file.read_text(encoding="utf-8").strip() or None
         except OSError:
             return None
 
     def _save_last_run_date(self) -> None:
-        """
-        Save today's date so the protocol does not run twice in one day.
-        """
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
         self.state_file.write_text(str(date.today()), encoding="utf-8")
 
     def already_ran_today(self) -> bool:
-        """
-        Check whether the awakening protocol already ran today.
-        """
-        last_run = self._load_last_run_date()
-        return last_run == str(date.today())
+        return self._load_last_run_date() == str(date.today())
 
-    def _get_video_path(self, filename: str) -> Path:
-        """
-        Build the full path to a video file and verify that it exists.
-        """
-        path = self.assets_dir / filename
-        if not path.exists():
-            raise FileNotFoundError(
-                f"Missing video file: {path}. "
-                f"Please check the filename in the assets folder."
-            )
-        return path
+    # ── VLC DISCOVERY ─────────────────────────────────────────────────────────
 
-    def _find_vlc_path(self) -> Path | None:
-        """
-        Attempt to automatically discover VLC path on Windows.
-        Returns resolved Path or None.
-        """
-        # 1. Check user configured path
+    def _find_vlc(self) -> Path | None:
+        """Locate VLC executable — configured path first, then standard locations."""
         if self.vlc_path and self.vlc_path.exists():
             return self.vlc_path
 
-        # 2. Check standard paths
-        standard_paths = [
+        candidates = [
             Path(r"C:\Program Files\VideoLAN\VLC\vlc.exe"),
             Path(r"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe"),
         ]
-        for p in standard_paths:
+        for p in candidates:
             if p.exists():
                 return p
 
-        # 3. Check registry key App Paths
+        # Windows registry fallback
         try:
             import winreg
             key = winreg.OpenKey(
@@ -158,110 +164,209 @@ class MorningAwakeningProtocol:
 
         return None
 
-    def _play_with_fallback(self, video_path: Path) -> None:
+    # ── VOLUME RAMP ───────────────────────────────────────────────────────────
+
+    def _ramp_volume(self) -> None:
         """
-        Play video using standard default Windows app launcher (os.startfile).
+        Gradually raise system volume from volume_start to volume_peak over
+        ~8 seconds. This mirrors a physical alarm clock ramping up — it
+        interrupts sleep without the shock of instant maximum volume.
         """
-        import os
-        print(f"VLC not found. Launching via default media player: {video_path.name}")
+        start = getattr(config.awakening, "volume_start", 30)
+        peak  = getattr(config.awakening, "volume_peak",  100)
+
+        if start == peak:
+            self._set_volume(peak)
+            return
+
+        steps = 16
+        step_delay = 8.0 / steps
+        for i in range(steps + 1):
+            vol = int(start + (peak - start) * (i / steps))
+            self._set_volume(vol)
+            time.sleep(step_delay)
+
+        print(f"[Awakening] Volume ramped {start}% → {peak}%")
+
+    @staticmethod
+    def _set_volume(level: int) -> None:
+        """Set Windows master volume (0–100) via PowerShell."""
         try:
-            os.startfile(str(video_path))
-            input("Press Enter to continue to the next video...")
-        except Exception as exc:
-            print(f"Fallback playback failed: {exc}")
+            script = (
+                f"$vol = {level} / 100;"
+                "[audio]::Volume = $vol"
+            )
+            # Use the simpler nircmd approach if available; fallback to PS
+            import ctypes
+            # WinMM volume: 0x0000 = mute, 0xFFFF = max
+            raw = int((level / 100) * 0xFFFF)
+            packed = raw | (raw << 16)
+            ctypes.windll.winmm.waveOutSetVolume(0, packed)
+        except Exception:
+            try:
+                subprocess.run(
+                    ["powershell", "-Command",
+                     f"$obj = New-Object -ComObject WScript.Shell; "
+                     f"$obj.SendKeys([char]174 * 5)"],
+                    capture_output=True, timeout=5
+                )
+            except Exception:
+                pass
 
-    def _play_with_vlc(self, vlc_executable: Path, video_path: Path) -> None:
+    # ── VIDEO PLAYBACK ────────────────────────────────────────────────────────
+
+    def _resolve_video_paths(self) -> list[str]:
+        """Return paths for all existing video files in the queue."""
+        paths = []
+        for video in self.video_queue:
+            raw = video.filename.strip()
+            p   = Path(raw)
+
+            if p.is_absolute():
+                # Path configured directly in awakening_assets.json
+                if p.exists():
+                    print(f"  [OK] {video.name}")
+                    print(f"       {p}")
+                    paths.append(str(p))
+                else:
+                    print(f"  [!!] NOT FOUND : {video.name}")
+                    print(f"       Path : {p}")
+                    print(f"       Fix  : update 'path' in assets/awakening_assets.json")
+            else:
+                # Legacy: filename relative to /assets folder
+                full = self.assets_dir / raw
+                if full.exists():
+                    print(f"  [OK] {video.name}  ({raw})")
+                    paths.append(str(full))
+                else:
+                    print(f"  [!!] Missing : {raw}")
+                    print(f"       Add file to /assets  OR  set full path in awakening_assets.json")
+        return paths
+
+
+    def _play_vlc_playlist(self, vlc_exe: Path, video_paths: list[str]) -> None:
         """
-        Play a video using VLC and wait until it finishes.
+        Launch all videos as a single VLC playlist in fullscreen.
+        subprocess.run blocks until the last video completes.
         """
-        vlc_command = [
-            str(vlc_executable),
+        cmd = [
+            str(vlc_exe),
             "--fullscreen",
-            "--play-and-exit",
-            "--no-one-instance",
-            str(video_path),
-        ]
-        # subprocess.run waits until VLC exits, so the next video will not start early.
-        subprocess.run(vlc_command, check=True)
+            "--play-and-exit",    # exit VLC when playlist ends
+            "--no-repeat",
+            "--no-loop",
+            "--no-one-instance",  # always spawn a fresh VLC process
+        ] + video_paths
+        print(f"[Awakening] Launching VLC with {len(video_paths)} video(s)...")
+        subprocess.run(cmd, check=False)   # check=False — VLC exit code is unreliable
 
-    def play_video(self, video: AwakeningVideo) -> None:
+    def _play_fallback(self, video_paths: list[str]) -> None:
+        """Play via Windows default player when VLC is not installed."""
+        import os
+        for vp in video_paths:
+            print(f"[Awakening] Fallback: opening {Path(vp).name} in default player")
+            try:
+                os.startfile(vp)
+                # Wait 3 min per video (approximate); no blocking possible without VLC
+                time.sleep(180)
+            except Exception as exc:
+                print(f"[Awakening] Fallback failed: {exc}")
+
+    # ── J.A.R.V.I.S. BRIEFING ────────────────────────────────────────────────
+
+    def _deliver_briefing(self) -> None:
         """
-        Play one video from the queue.
-        The next video starts only after this one finishes.
+        After the video sequence ends, J.A.R.V.I.S. reads the morning brief:
+        rank, streak, today's quests, north star, Huberman protocol update.
         """
-        video_path = self._get_video_path(video.filename)
+        print("\n[Awakening] Building J.A.R.V.I.S. morning briefing...")
+        time.sleep(2)   # 2-second buffer between VLC close and TTS start
+        try:
+            script = build_morning_awakening_script()
+            print(f"\n[J.A.R.V.I.S.] {script}\n")
+            speak_text(script)
+        except Exception as exc:
+            print(f"[Awakening] Briefing unavailable: {exc}")
 
-        print(f"\nNow playing: {video.name}")
-        print(f"File: {video_path}")
+    # ── PUBLIC API ────────────────────────────────────────────────────────────
 
-        vlc_exe = self._find_vlc_path()
-        if vlc_exe:
-            self._play_with_vlc(vlc_exe, video_path)
-        else:
-            self._play_with_fallback(video_path)
-
-    def run(self) -> None:
+    def run(self, force: bool = False) -> None:
         """
         Execute the full awakening sequence.
 
-        Steps:
-        1. Prevent duplicate runs on the same day
-        2. Play each video in the queue
-        3. Save today's run date
+        Args:
+            force: Skip the 'already ran today' guard. Use for testing only.
         """
-        if self.already_ran_today():
-            print("Awakening protocol already completed today.")
+        if not force and self.already_ran_today():
+            print("[Awakening] Protocol already completed today. Standing by.")
             return
 
-        print("\n==============================")
-        print("APEX GHOST - AWAKENING ENGINE")
-        print("==============================")
-        print("Initiating morning protocol...\n")
+        print()
+        print("╔══════════════════════════════════════════╗")
+        print("║   APEX GHOST — AWAKENING ENGINE ONLINE   ║")
+        print("╚══════════════════════════════════════════╝")
+        print(f"  Date     : {date.today()}")
+        print(f"  Videos   : {len(self.video_queue)} queued")
+        print()
 
-        vlc_exe = self._find_vlc_path()
-        if vlc_exe:
-            print("Launching complete awakening video sequence via VLC playlist...")
-            video_paths = []
-            for video in self.video_queue:
-                p = self._get_video_path(video.filename)
-                if p and p.exists():
-                    print(f"- Queued: {video.name}")
-                    video_paths.append(str(p))
-            if video_paths:
-                # --no-one-instance ensures VLC runs a dedicated process that blocks until the final video in the playlist completes
-                vlc_command = [
-                    str(vlc_exe),
-                    "--fullscreen",
-                    "--play-and-exit",
-                    "--no-one-instance",
-                ] + video_paths
-                subprocess.run(vlc_command, check=True)
+        # Step 1: Ramp volume so the beast-mode videos hit at full power
+        print("[Awakening] Ramping system volume...")
+        self._ramp_volume()
+
+        # Step 2: Resolve video files
+        video_paths = self._resolve_video_paths()
+
+        # Step 3: Play
+        if video_paths:
+            vlc_exe = self._find_vlc()
+            if vlc_exe:
+                self._play_vlc_playlist(vlc_exe, video_paths)
+            else:
+                print("[Awakening] VLC not found — using fallback player.")
+                print("  → Install VLC for precise sequential playback control.")
+                self._play_fallback(video_paths)
         else:
-            for video in self.video_queue:
-                self.play_video(video)
+            print("[Awakening] No video files found in /assets.")
+            print("  → Add your MP4s to the project /assets folder.")
+            print("  → Expected files:")
+            for v in self.video_queue:
+                print(f"     assets/{v.filename}")
 
-        # Save completion so it doesn't run again today
+        # Step 4: Mark complete BEFORE briefing so a crash doesn't re-trigger videos
         self._save_last_run_date()
 
-        print("\nAwakening video queue complete. Initializing J.A.R.V.I.S. morning voice protocol...")
-        time.sleep(2)  # 2-second buffer between video close and voice initiation
-        try:
-            morning_script = build_morning_awakening_script()
-            print(f"\n[J.A.R.V.I.S. Morning Briefing]: {morning_script}\n")
-            speak_text(morning_script)
-        except Exception as exc:
-            print(f"[Awakening Engine] Could not play morning briefing: {exc}")
+        # Step 5: J.A.R.V.I.S. morning briefing
+        self._deliver_briefing()
 
-        print("\nAwakening protocol complete. You are now active.")
+        print("\n[Awakening] Protocol complete. You are now active. Execute without mercy.")
 
+    def run_force(self) -> None:
+        """Run even if already triggered today. Use for testing."""
+        self.run(force=True)
+
+
+# ── CONVENIENCE ENTRY POINTS ──────────────────────────────────────────────────
 
 def run_awakening_protocol() -> None:
-    """
-    Convenience function so other files can start the protocol easily.
-    """
+    """Standard entry point used by the daily orchestrator and server."""
     protocol = MorningAwakeningProtocol()
     protocol.run()
 
 
+def force_awakening_now() -> None:
+    """Force-run for testing/manual trigger. Ignores today's state."""
+    protocol = MorningAwakeningProtocol()
+    protocol.run_force()
+
+
 if __name__ == "__main__":
-    run_awakening_protocol()
+    import argparse
+    parser = argparse.ArgumentParser(description="Apex Ghost Awakening Protocol")
+    parser.add_argument("--force", action="store_true",
+                        help="Force run even if already executed today (for testing)")
+    args = parser.parse_args()
+
+    if args.force:
+        force_awakening_now()
+    else:
+        run_awakening_protocol()

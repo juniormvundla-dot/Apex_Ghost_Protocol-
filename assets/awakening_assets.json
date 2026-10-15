@@ -1,0 +1,36 @@
+{
+  "_comment": "APEX GHOST — Awakening Video Asset Registry",
+  "_instructions": [
+    "Add the full path to each motivational video on your machine.",
+    "Videos play IN ORDER from top to bottom — sequence them intentionally.",
+    "You can add as many videos as you want — just extend the 'videos' array.",
+    "Set 'enabled: false' to temporarily skip a video without deleting it.",
+    "Run 'python -m automation.awakening --force' to test the full sequence."
+  ],
+  "videos": [
+    {
+      "name": "Goggins Wake-Up Blast",
+      "path": "C:\\Users\\tmvundla\\Downloads\\5-MINUTE-AUDIO-SnapYT.App.mp4",
+      "enabled": true,
+      "notes": "5-minute gym rat audio — breaks sleep inertia"
+    },
+    {
+      "name": "Batman Discipline Shift",
+      "path": "C:\\Users\\tmvundla\\Downloads\\Be-a-Pro-SnapYT.App.mp4",
+      "enabled": true,
+      "notes": "Break your limits — mindset shift"
+    },
+    {
+      "name": "Kill the Boy, Let the Man Be Born",
+      "path": "C:\\Users\\tmvundla\\Downloads\\Kill-that-weak-SnapYT.App.mp4",
+      "enabled": true,
+      "notes": "Identity shift — the old you dies here"
+    },
+    {
+      "name": "The-Ultimate-Sayain-Prince ",
+      "path": "C:\\Users\\tmvundla\\Downloads\\The-Ultimate-Vegeta-SnapYT.App.mp4",
+      "enabled": true,
+      "notes": "Chip on the shoulder — fuel for the session"
+    }
+  ]
+}

@@ -61,18 +61,31 @@ class XPSystem:
         xp = self.state.total_xp
         streak = self.state.streak
 
-        if xp >= 5000 or streak >= 30:
+        # Logarithmic rank thresholds — aligned to 90-day discipline arcs.
+        # Rank S requires 12+ months of elite, consistent execution.
+        # Streak bonuses allow fast early ranks but cannot skip tiers.
+        if xp >= 35_000 or (xp >= 20_000 and streak >= 90):
             self.state.rank = "S"
-        elif xp >= 3000 or streak >= 21:
+        elif xp >= 15_000 or (xp >= 8_000 and streak >= 60):
             self.state.rank = "A"
-        elif xp >= 1500 or streak >= 14:
+        elif xp >= 6_000 or (xp >= 3_000 and streak >= 30):
             self.state.rank = "B"
-        elif xp >= 700 or streak >= 7:
+        elif xp >= 2_000 or (xp >= 800 and streak >= 14):
             self.state.rank = "C"
-        elif xp >= 250 or streak >= 3:
+        elif xp >= 500 or (xp >= 150 and streak >= 5):
             self.state.rank = "D"
         else:
             self.state.rank = "E"
+
+    # XP thresholds per rank — used for progress bar calculation
+    RANK_THRESHOLDS: dict[str, tuple[int, int]] = {
+        "E": (0,       500),
+        "D": (500,     2_000),
+        "C": (2_000,   6_000),
+        "B": (6_000,   15_000),
+        "A": (15_000,  35_000),
+        "S": (35_000,  35_000),  # Max rank — no ceiling
+    }
 
     def get_summary(self) -> dict[str, int | str]:
         return {

@@ -236,15 +236,30 @@ class QuestService:
         completion_rate: float,
     ) -> CoachFeedback:
         """
-        Run the coach analysis for the current day.
+        Run the coach analysis with real behavioral data from the last 7 days.
         """
         xp_summary = xp_system.get_summary()
+
+        # Count hard (BOSS/difficulty>=4) quests that were MISSED in last 14 records
+        recent = progress_repository.get_recent_progress(limit=14)
+        hard_tasks_avoided = sum(
+            1 for r in recent
+            if r.status == QuestStatus.MISSED and "boss" in (r.notes or "").lower()
+        )
+
+        # Performance trend: compare last 7 vs prior 7 completion rates
+        last_7  = [r for r in recent[:7]]
+        prior_7 = [r for r in recent[7:14]]
+        last_rate  = sum(1 for r in last_7  if r.status == QuestStatus.COMPLETED) / max(len(last_7),  1)
+        prior_rate = sum(1 for r in prior_7 if r.status == QuestStatus.COMPLETED) / max(len(prior_7), 1)
+        performance_trend = round(last_rate - prior_rate, 2)  # +ve = improving, -ve = declining
+
         return self.coach.analyze(
             CoachInput(
                 missed_wake_ups=int(xp_summary["missed_wake_ups"]),
-                performance_trend=0.0,
+                performance_trend=performance_trend,
                 streak=int(xp_summary["streak"]),
-                hard_tasks_avoided=0,
+                hard_tasks_avoided=hard_tasks_avoided,
                 completion_rate=completion_rate,
             )
         )

@@ -17,6 +17,12 @@ class AwakeningConfig:
     vlc_path: str = r"C:\Program Files\VideoLAN\VLC\vlc.exe"
     run_on_daily_start: bool = True
     skip_if_already_ran: bool = True
+    # If True, the sequence fires automatically — no prompts, no opt-out.
+    # Set to False only when running daily protocol manually/interactively.
+    auto_launch: bool = True
+    # Volume ramp: start quiet and increase to max (0-100). Set both equal to disable ramp.
+    volume_start: int = 30
+    volume_peak: int = 100
 
 
 @dataclass
