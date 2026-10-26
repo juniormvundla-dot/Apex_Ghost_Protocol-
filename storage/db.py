@@ -235,6 +235,82 @@ class DatabaseManager:
             """
         )
 
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS xp_streams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                stream_name TEXT NOT NULL UNIQUE,
+                total_xp INTEGER DEFAULT 0,
+                level INTEGER DEFAULT 1,
+                rank TEXT DEFAULT 'E',
+                title TEXT DEFAULT NULL,
+                updated_at TEXT
+            )
+            """
+        )
+
+        # Seed initial XP streams
+        default_streams = [
+            ("WARRIOR", "Iron Initiate"),
+            ("SAGE", "Acolyte of Mind"),
+            ("SOVEREIGN", "Novice Treasurer"),
+            ("ARCHITECT", "Apprentice Builder"),
+            ("SHADOW", "Awakened Soul")
+        ]
+        for s_name, s_title in default_streams:
+            self.execute(
+                """
+                INSERT OR IGNORE INTO xp_streams (stream_name, total_xp, level, rank, title, updated_at)
+                VALUES (?, 0, 1, 'E', ?, datetime('now'))
+                """,
+                (s_name, s_title)
+            )
+
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS raids (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                raid_name TEXT NOT NULL,
+                raid_type TEXT NOT NULL,
+                difficulty TEXT DEFAULT 'VETERAN',
+                domain TEXT NOT NULL,
+                status TEXT DEFAULT 'ACTIVE',
+                party_hp_current INTEGER DEFAULT 1000,
+                party_hp_max INTEGER DEFAULT 1000,
+                started_at TEXT,
+                deadline_at TEXT,
+                completed_at TEXT,
+                invite_code TEXT UNIQUE
+            )
+            """
+        )
+
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS raid_checkpoints (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                raid_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                target_time TEXT NOT NULL,
+                status TEXT DEFAULT 'PENDING',
+                evidence_submitted TEXT,
+                completed_at TEXT
+            )
+            """
+        )
+
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shadow_directives (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message TEXT NOT NULL,
+                directive_type TEXT DEFAULT 'OBSERVATION',
+                created_at TEXT NOT NULL,
+                is_active INTEGER DEFAULT 1
+            )
+            """
+        )
+
         self._migrate_quest_columns()
 
     def _migrate_quest_columns(self) -> None:
@@ -249,6 +325,7 @@ class DatabaseManager:
             "difficulty": "ALTER TABLE quests ADD COLUMN difficulty INTEGER NOT NULL DEFAULT 2",
             "xp_reward": "ALTER TABLE quests ADD COLUMN xp_reward INTEGER NOT NULL DEFAULT 100",
             "penalty_xp": "ALTER TABLE quests ADD COLUMN penalty_xp INTEGER NOT NULL DEFAULT 50",
+            "stream": "ALTER TABLE quests ADD COLUMN stream TEXT NOT NULL DEFAULT 'WARRIOR'",
         }
 
         for column, sql in migrations.items():

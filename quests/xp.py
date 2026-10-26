@@ -15,19 +15,171 @@ class XPState:
     missed_wake_ups: int = 0
 
 
+STREAM_META = {
+    "WARRIOR": {
+        "display": "WARRIOR",
+        "domain": "Physical / Body",
+        "color": "#ff2255",
+        "icon": "⚔",
+        "titles": {
+            "E": "Iron Initiate",
+            "D": "Steel Vanguard",
+            "C": "Shadow Brawler",
+            "B": "Titan Crusher",
+            "A": "Apex Predator",
+            "S": "Unbroken Monarch",
+        }
+    },
+    "SAGE": {
+        "display": "SAGE",
+        "domain": "Knowledge / Skills",
+        "color": "#00e5ff",
+        "icon": "🧠",
+        "titles": {
+            "E": "Acolyte of Mind",
+            "D": "Cognitive Seeker",
+            "C": "Cipher Master",
+            "B": "Grand Synthesizer",
+            "A": "Omni Scholar",
+            "S": "Akashic Sovereign",
+        }
+    },
+    "SOVEREIGN": {
+        "display": "SOVEREIGN",
+        "domain": "Finance / Wealth",
+        "color": "#ffd700",
+        "icon": "💰",
+        "titles": {
+            "E": "Novice Treasurer",
+            "D": "Asset Accumulator",
+            "C": "Capital Commander",
+            "B": "Vault Overseer",
+            "A": "Empire Architect",
+            "S": "Golden Sovereign",
+        }
+    },
+    "ARCHITECT": {
+        "display": "ARCHITECT",
+        "domain": "Career / Creation",
+        "color": "#9d33ff",
+        "icon": "🌐",
+        "titles": {
+            "E": "Apprentice Builder",
+            "D": "Code Smith",
+            "C": "Systems Engineer",
+            "B": "Domain Creator",
+            "A": "World Builder",
+            "S": "Master Architect",
+        }
+    },
+    "SHADOW": {
+        "display": "SHADOW",
+        "domain": "Mental / Spiritual",
+        "color": "#e8c8ff",
+        "icon": "🔥",
+        "titles": {
+            "E": "Awakened Soul",
+            "D": "Silent Observer",
+            "C": "Ghost Operator",
+            "B": "Shadow Walker",
+            "A": "Void Master",
+            "S": "Shadow Monarch",
+        }
+    }
+}
+
+
 class XPSystem:
     """
-    Handles XP accumulation, rank progression, and streak tracking.
+    Handles XP accumulation, multi-stream progression, rank calculation, and streak tracking.
     """
 
     def __init__(self) -> None:
         self.state = XPState()
         self._load()
 
-    def add_xp(self, amount: int) -> None:
-        self.state.total_xp += max(amount, 0)
+    def add_xp(self, amount: int, stream: str | None = None) -> None:
+        gained = max(amount, 0)
+        self.state.total_xp += gained
         self._update_rank()
         self._save()
+        if stream:
+            self._add_stream_xp(stream.upper(), gained)
+
+    def _add_stream_xp(self, stream_name: str, amount: int) -> None:
+        if stream_name not in STREAM_META:
+            stream_name = "WARRIOR"
+
+        database_manager.ensure_ready()
+        row = database_manager.fetch_one(
+            "SELECT total_xp, level FROM xp_streams WHERE stream_name = ?",
+            (stream_name,)
+        )
+        cur_xp = (row["total_xp"] if row else 0) + amount
+        new_level = max(1, (cur_xp // 500) + 1)
+
+        # Determine rank
+        if new_level >= 50:
+            rank = "S"
+        elif new_level >= 35:
+            rank = "A"
+        elif new_level >= 20:
+            rank = "B"
+        elif new_level >= 10:
+            rank = "C"
+        elif new_level >= 5:
+            rank = "D"
+        else:
+            rank = "E"
+
+        title = STREAM_META.get(stream_name, {}).get("titles", {}).get(rank, "Initiate")
+
+        database_manager.execute(
+            """
+            INSERT INTO xp_streams (stream_name, total_xp, level, rank, title, updated_at)
+            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            ON CONFLICT(stream_name) DO UPDATE SET
+                total_xp = excluded.total_xp,
+                level = excluded.level,
+                rank = excluded.rank,
+                title = excluded.title,
+                updated_at = excluded.updated_at
+            """,
+            (stream_name, cur_xp, new_level, rank, title)
+        )
+
+    def get_streams_summary(self) -> list[dict]:
+        database_manager.ensure_ready()
+        rows = database_manager.fetch_all("SELECT stream_name, total_xp, level, rank, title FROM xp_streams")
+        row_map = {r["stream_name"]: dict(r) for r in rows}
+
+        results = []
+        for name, meta in STREAM_META.items():
+            data = row_map.get(name, {"total_xp": 0, "level": 1, "rank": "E", "title": meta["titles"]["E"]})
+            total_xp = data.get("total_xp", 0)
+            level = data.get("level", 1)
+            rank = data.get("rank", "E")
+            title = data.get("title") or meta["titles"].get(rank, "Initiate")
+            
+            cur_level_xp = total_xp % 500
+            next_level_xp = 500
+            pct = min(100, int((cur_level_xp / next_level_xp) * 100))
+
+            results.append({
+                "name": name,
+                "display": meta["display"],
+                "domain": meta["domain"],
+                "color": meta["color"],
+                "icon": meta["icon"],
+                "total_xp": total_xp,
+                "level": level,
+                "rank": rank,
+                "title": title,
+                "cur_level_xp": cur_level_xp,
+                "next_level_xp": next_level_xp,
+                "progress_pct": pct
+            })
+        return results
 
     def apply_penalty(self, amount: int) -> None:
         self.state.total_xp = max(0, self.state.total_xp - max(amount, 0))

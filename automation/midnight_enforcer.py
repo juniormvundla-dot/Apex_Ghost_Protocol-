@@ -360,6 +360,24 @@ class MidnightEnforcer:
         # Always spawn a recovery quest on any failure
         self._spawn_recovery_quest(missed_titles)
 
+        # Check active raid penalty
+        try:
+            from raids.raid_service import raid_service
+            active_raid = raid_service.get_active_raid()
+            if active_raid and len(pending) > 0:
+                raid_service.damage_raid(active_raid["id"], hp_loss=150 * len(pending))
+                print(f"[Enforcer] Raid damaged by {150 * len(pending)} HP due to missed contracts.")
+        except Exception as e:
+            print(f"[Enforcer] Raid damage check exception: {e}")
+
+        # Trigger Shadow Director nightly directive synthesis
+        try:
+            from shadow.shadow_director import shadow_director
+            shadow_director.generate_directive()
+            print("[Enforcer] Shadow Director synthesized morning directive.")
+        except Exception as e:
+            print(f"[Enforcer] Shadow Director exception: {e}")
+
         return {
             "status": "enforced",
             "missed": len(pending),

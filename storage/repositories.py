@@ -37,6 +37,7 @@ class QuestRepository:
             penalty_xp=row["penalty_xp"] if row["penalty_xp"] is not None else 50,
             evidence_required=bool(row["evidence_required"]) if "evidence_required" in row.keys() else False,
             evidence_submitted=row["evidence_submitted"] if "evidence_submitted" in row.keys() else "",
+            stream=row["stream"] if ("stream" in row.keys() and row["stream"]) else "WARRIOR",
         )
 
     def save_quest(self, quest: Quest) -> None:
@@ -47,9 +48,9 @@ class QuestRepository:
             """
             INSERT INTO quests (
                 title, description, level, status, target_date, completed_at, notes,
-                category, difficulty, xp_reward, penalty_xp, evidence_required, evidence_submitted
+                category, difficulty, xp_reward, penalty_xp, evidence_required, evidence_submitted, stream
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(title) DO UPDATE SET
                 description = excluded.description,
                 level = excluded.level,
@@ -62,7 +63,8 @@ class QuestRepository:
                 xp_reward = excluded.xp_reward,
                 penalty_xp = excluded.penalty_xp,
                 evidence_required = excluded.evidence_required,
-                evidence_submitted = excluded.evidence_submitted
+                evidence_submitted = excluded.evidence_submitted,
+                stream = excluded.stream
             """,
             (
                 quest.title,
@@ -78,6 +80,7 @@ class QuestRepository:
                 quest.penalty_xp,
                 int(quest.evidence_required),
                 quest.evidence_submitted,
+                getattr(quest, "stream", "WARRIOR"),
             ),
         )
 
@@ -88,7 +91,7 @@ class QuestRepository:
         rows = database_manager.fetch_all(
             """
             SELECT title, description, level, status, target_date, completed_at, notes,
-                   category, difficulty, xp_reward, penalty_xp, evidence_required, evidence_submitted
+                   category, difficulty, xp_reward, penalty_xp, evidence_required, evidence_submitted, stream
             FROM quests
             ORDER BY id DESC
             """
@@ -103,7 +106,7 @@ class QuestRepository:
         rows = database_manager.fetch_all(
             """
             SELECT title, description, level, status, target_date, completed_at, notes,
-                   category, difficulty, xp_reward, penalty_xp, evidence_required, evidence_submitted
+                   category, difficulty, xp_reward, penalty_xp, evidence_required, evidence_submitted, stream
             FROM quests
             WHERE status = ?
             ORDER BY id DESC
@@ -120,7 +123,7 @@ class QuestRepository:
         rows = database_manager.fetch_all(
             """
             SELECT title, description, level, status, target_date, completed_at, notes,
-                   category, difficulty, xp_reward, penalty_xp, evidence_required, evidence_submitted
+                   category, difficulty, xp_reward, penalty_xp, evidence_required, evidence_submitted, stream
             FROM quests
             WHERE level = ? AND target_date = ?
             ORDER BY id ASC

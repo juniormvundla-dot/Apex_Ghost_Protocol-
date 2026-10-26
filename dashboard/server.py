@@ -28,6 +28,8 @@ from core.treasury_service import treasury_service
 from core.treasury_models import TreasuryTransaction, BudgetRules
 from voice.treasury_brain import generate_spending_audit
 from scrapers.opportunity_hunter import opportunity_hunter
+from shadow.shadow_director import shadow_director
+from raids.raid_service import raid_service
 
 PORT = 5000
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -151,6 +153,12 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             self.serve_treasury_transactions()
         elif self.path.startswith("/api/opportunities/latest"):
             self.serve_opportunities_latest()
+        elif self.path.startswith("/api/xp/streams"):
+            self.serve_xp_streams()
+        elif self.path.startswith("/api/shadow/state"):
+            self.serve_shadow_state()
+        elif self.path.startswith("/api/raids/active"):
+            self.serve_raids_active()
         else:
             clean_path = self.path.split("?")[0]
             if clean_path == "/" or clean_path == "":
@@ -174,6 +182,12 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             self.handle_opportunities_scan()
         elif self.path.startswith("/api/opportunities/accept"):
             self.handle_opportunities_accept()
+        elif self.path.startswith("/api/raids/solo/start"):
+            self.handle_raids_solo_start()
+        elif self.path.startswith("/api/raids/checkpoint/complete"):
+            self.handle_raids_checkpoint_complete()
+        elif self.path.startswith("/api/shadow/generate"):
+            self.handle_shadow_generate()
         else:
             self.send_error(404, "Endpoint not found")
 
@@ -232,7 +246,10 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
                 "weekly_quests": weekly_list,
                 "focus_history": focus_history,
                 "focus_active": active_focus_controller is not None,
-                "attributes": attrs
+                "attributes": attrs,
+                "xp_streams": xp_system.get_streams_summary(),
+                "shadow_state": shadow_director.get_shadow_state(),
+                "active_raid": raid_service.get_active_raid()
             }
 
             self.send_response(200)
@@ -801,6 +818,102 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"status": "success", "quests": created_quests}).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def serve_xp_streams(self):
+        try:
+            streams = xp_system.get_streams_summary()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            self.wfile.write(json.dumps(streams).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def serve_shadow_state(self):
+        try:
+            state = shadow_director.get_shadow_state()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            self.wfile.write(json.dumps(state).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def serve_raids_active(self):
+        try:
+            raid = raid_service.get_active_raid()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            self.wfile.write(json.dumps(raid or {}).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def handle_raids_solo_start(self):
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            payload = json.loads(body) if body else {}
+
+            raid_name = payload.get("raid_name", "THE IRON GAUNTLET")
+            domain = payload.get("domain", "WARRIOR")
+            difficulty = payload.get("difficulty", "VETERAN")
+
+            raid = raid_service.start_solo_dungeon(raid_name=raid_name, domain=domain, difficulty=difficulty)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "raid": raid}).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def handle_raids_checkpoint_complete(self):
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+            payload = json.loads(body) if body else {}
+
+            checkpoint_id = int(payload.get("checkpoint_id"))
+            evidence = payload.get("evidence", "Verified")
+
+            raid = raid_service.complete_checkpoint(checkpoint_id=checkpoint_id, evidence=evidence)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "raid": raid}).encode("utf-8"))
+        except Exception as e:
+            self.send_response(500)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+
+    def handle_shadow_generate(self):
+        try:
+            directive = shadow_director.generate_directive()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "directive": directive}).encode("utf-8"))
         except Exception as e:
             self.send_response(500)
             self.send_header("Content-Type", "application/json")

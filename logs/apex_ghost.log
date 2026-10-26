@@ -300,3 +300,37 @@ FileNotFoundError: Required folder not found: C:\Users\tmvundla\Documents\Person
 2026-10-02 11:48:29 | INFO | ApexGhostSystem | Project paths and database verified successfully.
 2026-10-02 11:48:30 | INFO | ApexGhostSystem | Starting Apex Ghost CLI menu...
 2026-10-05 10:44:38 | INFO | ApexGhostSystem | Apex Ghost stopped by user.
+2026-10-20 14:52:38 | INFO | ApexGhostSystem | Logging system initialized.
+2026-10-20 14:52:38 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-10-20 14:52:38 | INFO | ApexGhostSystem | Project paths and database verified successfully.
+2026-10-22 08:16:17 | INFO | ApexGhostSystem | Logging system initialized.
+2026-10-22 08:16:17 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-10-22 08:16:17 | INFO | ApexGhostSystem | Project paths and database verified successfully.
+2026-10-22 08:16:18 | INFO | ApexGhostSystem | Starting Apex Ghost CLI menu...
+2026-10-22 08:19:06 | INFO | ApexGhostSystem | Logging system initialized.
+2026-10-22 08:19:06 | INFO | ApexGhostSystem | Log file: C:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\logs\apex_ghost.log
+2026-10-22 08:19:06 | INFO | ApexGhostSystem | Project paths and database verified successfully.
+2026-10-22 08:19:07 | INFO | ApexGhostSystem | Starting Apex Ghost CLI menu...
+2026-10-22 08:19:58 | ERROR | ApexGhostSystem | Fatal error in main(): [WinError 2] The system cannot find the file specified
+Traceback (most recent call last):
+  File "c:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\main.py", line 53, in main
+    run_cli_menu()
+  File "c:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\ui\cli.py", line 146, in main
+    running = handle_choice(choice)
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\ui\cli.py", line 84, in handle_choice
+    activate_private_mode()
+  File "c:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\automation\private_mode.py", line 314, in activate_private_mode
+    controller.enter_private_mode()
+  File "c:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\automation\private_mode.py", line 288, in enter_private_mode
+    self.launch_intellij()
+  File "c:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\automation\private_mode.py", line 93, in launch_intellij
+    system_controller.launch_app_by_path(self.intellij_executable_path)
+  File "c:\Users\tmvundla\Documents\Personal_project\Apex_Ghost_Protocol-\automation\system_control.py", line 112, in launch_app_by_path
+    subprocess.Popen([executable_path])
+  File "C:\Users\tmvundla\AppData\Local\Programs\Python\Python311\Lib\subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "C:\Users\tmvundla\AppData\Local\Programs\Python\Python311\Lib\subprocess.py", line 1538, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] The system cannot find the file specified

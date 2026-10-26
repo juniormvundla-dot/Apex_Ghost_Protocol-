@@ -723,3 +723,253 @@ input, select { font-family: var(--f-mono); outline: none; }
   0%   { transform: translate(0,0) scale(1); opacity: 1; }
   100% { transform: translate(var(--dx),var(--dy)) scale(0.5); opacity: 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SHADOW DIRECTIVE HOLOGRAPHIC BANNER (YEAR 2045 BENCHMARK)
+   ═══════════════════════════════════════════════════════════════════ */
+.shadow-directive-rail {
+  margin: 6px 16px 10px 16px;
+  padding: 8px 16px;
+  background: rgba(13, 0, 26, 0.78);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-left: 3px solid var(--cyan);
+  border-radius: 4px;
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.15), inset 0 0 20px rgba(123, 0, 204, 0.12);
+  position: relative;
+  overflow: hidden;
+  animation: railBreathing 4s ease-in-out infinite alternate;
+}
+@keyframes railBreathing {
+  0% { border-color: rgba(0, 229, 255, 0.3); box-shadow: 0 0 14px rgba(0, 229, 255, 0.12); }
+  100% { border-color: rgba(0, 229, 255, 0.6); box-shadow: 0 0 22px rgba(0, 229, 255, 0.25); }
+}
+.shadow-directive-rail::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.12), transparent);
+  animation: scanlineSweep 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes scanlineSweep {
+  0% { left: -60%; }
+  100% { left: 160%; }
+}
+.sdr-left {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.sdr-glyph {
+  font-size: 1rem; color: var(--cyan); text-shadow: var(--g-cyan);
+  animation: glyphPulse 2s infinite ease-in-out;
+}
+@keyframes glyphPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.7; }
+}
+.sdr-mode {
+  font-family: var(--f-head); font-size: 0.65rem; letter-spacing: 0.15em;
+  color: var(--cyan); text-transform: uppercase; font-weight: 700;
+}
+.sdr-center {
+  flex: 1; display: flex; align-items: center; gap: 10px; overflow: hidden;
+}
+.sdr-label {
+  font-family: var(--f-head); font-size: 0.6rem; letter-spacing: 0.18em;
+  color: var(--p4); flex-shrink: 0; opacity: 0.85;
+}
+.sdr-text {
+  font-family: var(--f-body); font-size: 0.88rem; font-weight: 600;
+  color: #fff; letter-spacing: 0.05em; text-shadow: 0 0 8px rgba(255,255,255,0.4);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sdr-btn {
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  color: var(--cyan);
+  font-family: var(--f-head); font-size: 0.58rem; letter-spacing: 0.14em;
+  padding: 5px 12px; border-radius: 3px; cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.22,1,0.36,1);
+  flex-shrink: 0;
+}
+.sdr-btn:hover {
+  background: rgba(0, 229, 255, 0.28);
+  box-shadow: var(--g-cyan);
+  transform: translateY(-1px);
+}
+.sdr-btn:active {
+  transform: scale(0.96);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   XP STREAMS MATRIX CARD
+   ═══════════════════════════════════════════════════════════════════ */
+.streams-badge-tag {
+  font-family: var(--f-mono); font-size: 0.55rem; color: var(--gold);
+  border: 1px solid rgba(255, 215, 0, 0.35); padding: 1px 6px; border-radius: 3px;
+  background: rgba(255, 215, 0, 0.08); letter-spacing: 0.1em;
+}
+.streams-list {
+  display: flex; flex-direction: column; gap: 9px; margin-top: 8px;
+}
+.stream-row {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 7px 10px; background: rgba(10, 0, 22, 0.65);
+  border: 1px solid rgba(155, 51, 255, 0.2); border-radius: 4px;
+  transition: all 0.2s;
+}
+.stream-row:hover {
+  border-color: rgba(187, 102, 255, 0.45);
+  box-shadow: 0 0 12px rgba(123, 0, 204, 0.2);
+}
+.stream-head {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.stream-identity {
+  display: flex; align-items: center; gap: 7px;
+}
+.stream-icon {
+  font-size: 0.85rem;
+}
+.stream-title-text {
+  font-family: var(--f-head); font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.stream-rank-gem {
+  font-family: var(--f-title); font-size: 0.55rem; font-weight: 900;
+  padding: 1px 5px; border-radius: 2px; border: 1px solid;
+}
+.stream-meta-info {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--f-mono); font-size: 0.58rem; color: var(--p4);
+}
+.stream-honor-title {
+  font-family: var(--f-head); font-size: 0.56rem; color: var(--p5); opacity: 0.85;
+}
+.stream-track {
+  height: 5px; background: rgba(20, 0, 40, 0.8);
+  border-radius: 3px; overflow: hidden; position: relative;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.stream-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SOLO DUNGEON & RAID CARD
+   ═══════════════════════════════════════════════════════════════════ */
+.raid-badge-tag {
+  font-family: var(--f-head); font-size: 0.55rem; color: var(--red);
+  border: 1px solid rgba(255, 34, 85, 0.45); padding: 1px 7px; border-radius: 3px;
+  background: rgba(255, 34, 85, 0.1); letter-spacing: 0.12em;
+  animation: boss-pulse 2s ease-in-out infinite;
+}
+.raid-body {
+  margin-top: 6px;
+}
+.raid-empty-box {
+  padding: 18px 14px; text-align: center;
+  background: rgba(13, 0, 26, 0.5); border: 1px dashed rgba(155, 51, 255, 0.3);
+  border-radius: 5px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.raid-prompt-title {
+  font-family: var(--f-title); font-size: 0.78rem; color: var(--p4); letter-spacing: 0.15em;
+}
+.raid-prompt-desc {
+  font-family: var(--f-body); font-size: 0.75rem; color: var(--p5); max-width: 320px;
+}
+.raid-start-btn {
+  background: linear-gradient(135deg, rgba(255, 34, 85, 0.25), rgba(123, 0, 204, 0.4));
+  border: 1px solid var(--red); color: #fff;
+  font-family: var(--f-head); font-size: 0.68rem; letter-spacing: 0.15em;
+  padding: 8px 18px; border-radius: 4px; cursor: pointer;
+  box-shadow: 0 0 16px rgba(255, 34, 85, 0.3);
+  transition: all 0.2s cubic-bezier(0.22,1,0.36,1);
+}
+.raid-start-btn:hover {
+  box-shadow: 0 0 24px rgba(255, 34, 85, 0.6);
+  transform: translateY(-1px);
+}
+.raid-start-btn:active {
+  transform: scale(0.97);
+}
+
+.raid-active-wrap {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.raid-header-row {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.raid-name-title {
+  font-family: var(--f-title); font-size: 0.85rem; color: var(--red);
+  letter-spacing: 0.12em; text-shadow: 0 0 10px rgba(255, 34, 85, 0.4);
+}
+.raid-diff-chip {
+  font-family: var(--f-mono); font-size: 0.55rem; color: var(--gold);
+  border: 1px solid rgba(255, 215, 0, 0.4); padding: 1px 6px; border-radius: 2px;
+}
+.raid-hp-container {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.raid-hp-labels {
+  display: flex; justify-content: space-between;
+  font-family: var(--f-mono); font-size: 0.6rem; color: var(--p4);
+}
+.raid-hp-track {
+  height: 8px; background: rgba(20, 0, 0, 0.8);
+  border: 1px solid rgba(255, 34, 85, 0.4); border-radius: 4px; overflow: hidden;
+}
+.raid-hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff2255, #ffaa00);
+  box-shadow: 0 0 12px rgba(255, 34, 85, 0.6);
+  transition: width 0.5s ease;
+}
+.raid-checkpoints {
+  display: flex; flex-direction: column; gap: 6px; margin-top: 4px;
+}
+.checkpoint-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; background: rgba(13, 0, 24, 0.7);
+  border: 1px solid rgba(155, 51, 255, 0.2); border-radius: 3px;
+}
+.checkpoint-row.completed {
+  border-color: rgba(0, 255, 136, 0.35);
+  background: rgba(0, 255, 136, 0.05);
+}
+.cp-left {
+  display: flex; align-items: center; gap: 8px;
+}
+.cp-status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255, 34, 85, 0.6);
+}
+.checkpoint-row.completed .cp-status-dot {
+  background: var(--green); box-shadow: 0 0 6px var(--green);
+}
+.cp-title {
+  font-family: var(--f-body); font-size: 0.8rem; font-weight: 600; color: var(--p5);
+}
+.cp-target {
+  font-family: var(--f-mono); font-size: 0.58rem; color: var(--cyan);
+}
+.cp-action-btn {
+  background: rgba(0, 255, 136, 0.15); border: 1px solid var(--green);
+  color: var(--green); font-family: var(--f-mono); font-size: 0.58rem;
+  padding: 3px 8px; border-radius: 3px; cursor: pointer;
+  transition: all 0.2s;
+}
+.cp-action-btn:hover {
+  background: rgba(0, 255, 136, 0.3); box-shadow: 0 0 10px var(--green);
+}
+.cp-cleared-badge {
+  font-family: var(--f-head); font-size: 0.58rem; color: var(--green);
+  letter-spacing: 0.1em;
+}
+

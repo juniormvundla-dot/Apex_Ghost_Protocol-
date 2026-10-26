@@ -107,7 +107,7 @@ class QuestService:
         quest_repository.save_quest(quest)
 
         if quest.category in (QuestCategory.CORE, QuestCategory.BOSS):
-            xp_system.add_xp(quest.xp_reward)
+            xp_system.add_xp(quest.xp_reward, stream=getattr(quest, "stream", "WARRIOR"))
 
         return quest
 
@@ -213,21 +213,28 @@ class QuestService:
         missed_wake_up: bool = False,
     ) -> ProgressSnapshot:
         """
-        Build a snapshot from stored XP and recent quest progress.
+        Build a snapshot from stored XP, fatigue telemetry, and recent quest progress.
         """
         xp_summary = xp_system.get_summary()
         recent = progress_repository.get_recent_progress(limit=20)
         completed = sum(1 for record in recent if record.status == QuestStatus.COMPLETED)
         total = len(recent) or 1
         completion_rate = int((completed / total) * 100)
+        streak = int(xp_summary["streak"])
+
+        from quests.predictive_engine import predictive_engine
+        fatigue_index = predictive_engine.calculate_fatigue_index()
+        op_mode = predictive_engine.get_operational_mode(fatigue_index=fatigue_index, streak=streak)
 
         return ProgressSnapshot(
             current_progress=completion_rate,
             previous_day_completion=completion_rate,
-            streak=int(xp_summary["streak"]),
+            streak=streak,
             weak_day=completion_rate < 50,
             missed_wake_up=missed_wake_up,
             adjusted_difficulty=adjusted_difficulty,
+            fatigue_index=fatigue_index,
+            operational_mode=op_mode,
         )
 
     def get_coach_feedback(
@@ -268,15 +275,26 @@ class QuestService:
         self,
         quests: list[Quest],
         coach_feedback: CoachFeedback,
+        snapshot: ProgressSnapshot | None = None,
     ) -> None:
         """
-        Print today's quests, XP status, and coach feedback.
+        Print today's quests, XP status, DDA operational mode, and coach feedback.
         """
         xp_summary = xp_system.get_summary()
         plan = goal_planner.get_current_plan()
 
+        from quests.predictive_engine import predictive_engine
+        fatigue = snapshot.fatigue_index if snapshot else predictive_engine.calculate_fatigue_index()
+        op_mode = snapshot.operational_mode if snapshot else predictive_engine.get_operational_mode(fatigue)
+
+        mode_badge = (
+            f"🔥 {op_mode}" if op_mode == "OVERDRIVE"
+            else (f"🛡️ {op_mode} (Streak Protector)" if op_mode == "ACTIVE_RECOVERY" else f"⚡ {op_mode}")
+        )
+        print(f"\n[DDA System] Operational Mode: {mode_badge} | Fatigue Index: {int(fatigue * 100)}%")
+
         if plan.north_star:
-            print(f"\nNorth Star: {plan.north_star}")
+            print(f"North Star: {plan.north_star}")
 
         if plan.today_actions:
             print("\n--- GOAL-LINKED FOCUS ---")

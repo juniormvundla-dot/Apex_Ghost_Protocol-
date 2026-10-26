@@ -884,6 +884,150 @@ function updateHUD(d) {
     const pct   = total > 0 ? Math.round((done/total)*100) : 0;
     setText('goal-pct', `${pct}%`);
     setWidth('goal-bar', pct);
+
+    // Gamification Raid & Shadow updates
+    if (d.shadow_state) updateShadowDirective(d.shadow_state);
+    if (d.xp_streams) updateXPStreams(d.xp_streams);
+    if (d.active_raid !== undefined) updateRaid(d.active_raid);
+}
+
+function updateShadowDirective(state) {
+    if (!state) return;
+    const modeEl = document.getElementById('shadow-mode-tag');
+    const textEl = document.getElementById('shadow-message-text');
+    if (modeEl) modeEl.textContent = `SYSTEM · ${state.mode || 'SCULPTOR'}`;
+    if (textEl && state.message) textEl.textContent = `"${state.message}"`;
+}
+
+async function regenerateShadowDirective() {
+    const btn = document.getElementById('sdr-regen-btn');
+    if (btn) {
+        btn.textContent = '⚡ SYNTHESIZING...';
+        btn.disabled = true;
+    }
+    try {
+        const r = await fetch('/api/shadow/generate', { method: 'POST' });
+        const d = await r.json();
+        if (d && d.directive) {
+            const textEl = document.getElementById('shadow-message-text');
+            if (textEl) textEl.textContent = `"${d.directive}"`;
+        }
+    } catch(e) {}
+    if (btn) {
+        btn.textContent = '⚡ RE-SYNTHESIZE';
+        btn.disabled = false;
+    }
+}
+
+function updateXPStreams(streams) {
+    const list = document.getElementById('streams-list');
+    if (!list || !streams || !streams.length) return;
+    list.innerHTML = streams.map(s => `
+        <div class="stream-row" style="border-left: 3px solid ${s.color};">
+            <div class="stream-head">
+                <div class="stream-identity">
+                    <span class="stream-icon">${s.icon}</span>
+                    <span class="stream-title-text" style="color:${s.color};">${s.display}</span>
+                    <span class="stream-rank-gem" style="color:${s.color}; border-color:${s.color};">${s.rank}</span>
+                </div>
+                <div class="stream-meta-info">
+                    <span class="stream-honor-title">${s.title}</span>
+                    <span>LVL ${s.level} · ${s.cur_level_xp}/${s.next_level_xp} XP</span>
+                </div>
+            </div>
+            <div class="stream-track">
+                <div class="stream-fill" style="width:${s.progress_pct}%; background:${s.color}; box-shadow: 0 0 10px ${s.color};"></div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateRaid(raid) {
+    const body = document.getElementById('raid-body');
+    const tag = document.getElementById('raid-badge-tag');
+    if (!body) return;
+
+    if (!raid || !raid.id || raid.status !== 'ACTIVE') {
+        if (tag) tag.textContent = 'TRIAL READY';
+        body.innerHTML = `
+            <div class="raid-empty-box">
+                <div class="raid-prompt-title">NO DUNGEON RUNNING</div>
+                <div class="raid-prompt-desc">Enter a 24-hour high-stakes solo trial to earn domain loot, status, and 600 bonus stream XP.</div>
+                <button class="raid-start-btn" onclick="startSoloDungeon()">⚔ ENTER SOLO DUNGEON</button>
+            </div>
+        `;
+        return;
+    }
+
+    if (tag) tag.textContent = `${raid.difficulty} · ${raid.domain}`;
+    const hpPct = Math.round((raid.party_hp_current / raid.party_hp_max) * 100);
+    const checkpointsHtml = (raid.checkpoints || []).map(cp => `
+        <div class="checkpoint-row ${cp.status === 'COMPLETED' ? 'completed' : ''}">
+            <div class="cp-left">
+                <div class="cp-status-dot"></div>
+                <div>
+                    <div class="cp-title">${cp.title}</div>
+                    <div class="cp-target">Target: ${cp.target_time}</div>
+                </div>
+            </div>
+            <div>
+                ${cp.status === 'COMPLETED' 
+                    ? '<span class="cp-cleared-badge">CLEARED ✓</span>'
+                    : `<button class="cp-action-btn" onclick="completeCheckpoint(${cp.id})">VERIFY</button>`
+                }
+            </div>
+        </div>
+    `).join('');
+
+    body.innerHTML = `
+        <div class="raid-active-wrap">
+            <div class="raid-header-row">
+                <div class="raid-name-title">${raid.raid_name}</div>
+                <div class="raid-diff-chip">${raid.difficulty} · ${raid.domain}</div>
+            </div>
+            <div class="raid-hp-container">
+                <div class="raid-hp-labels">
+                    <span>PARTY REPUTATION / HP</span>
+                    <span>${raid.party_hp_current} / ${raid.party_hp_max} HP (${hpPct}%)</span>
+                </div>
+                <div class="raid-hp-track">
+                    <div class="raid-hp-fill" style="width:${hpPct}%;"></div>
+                </div>
+            </div>
+            <div class="raid-checkpoints">
+                ${checkpointsHtml}
+            </div>
+        </div>
+    `;
+}
+
+async function startSoloDungeon() {
+    try {
+        const r = await fetch('/api/raids/solo/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ raid_name: 'THE IRON GAUNTLET', domain: 'WARRIOR', difficulty: 'VETERAN' })
+        });
+        const d = await r.json();
+        if (d && d.raid) {
+            updateRaid(d.raid);
+        }
+    } catch(e) {}
+}
+
+async function completeCheckpoint(cpId) {
+    try {
+        const r = await fetch('/api/raids/checkpoint/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ checkpoint_id: cpId, evidence: 'Verified checkpoint' })
+        });
+        const d = await r.json();
+        if (d && d.raid) {
+            updateRaid(d.raid);
+            fetchStats();
+        }
+    } catch(e) {}
 }
 
 function updateMarket(d) {

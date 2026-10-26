@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-# AI Financial Auditor powered by Gemini Pro / Flash.
-# Evaluates spending through Elon Musk's First-Principles and Robert Kiyosaki's Asset-First doctrine.
+# 100% Air-Gapped Local Financial Auditor.
+# Guarantee: Zero financial bytes are ever transmitted over external networks.
+# Evaluates spending through Elon Musk's First-Principles and Robert Kiyosaki's Asset-First doctrine
+# using local Ollama model 'apex-cfo' (localhost:11434) with deterministic mathematical fallback.
 
-import os
-import requests
-from core.config import config
 from core.treasury_models import FinancialHealthReport, TreasuryTransaction
 
 
 def build_deterministic_audit(report: FinancialHealthReport, transactions: list[TreasuryTransaction]) -> str:
     """
-    Fallback deterministic financial audit when Gemini API key is absent or offline.
+    Offline deterministic financial audit based strictly on mathematical ratios and rules.
+    Used when Ollama is offline or as zero-AI air-gapped baseline.
     """
     lines = [
         "### 🏛️ APEX TREASURY AUDIT (DETERMINISTIC FIRST-PRINCIPLES)",
@@ -23,10 +23,10 @@ def build_deterministic_audit(report: FinancialHealthReport, transactions: list[
         f"- **Liquid Freedom Runway**: {report.runway_months} months",
         "",
         "#### 🔍 Capital Allocation Breakdown:",
-        f"- 🟢 **Assets (Productive Capital)**: {report.currency}{report.asset_total:,.2f} ({report.asset_pct}%)",
+        f"- 🟢 **Assets (Productive Capital)**: {report.currency}{report.asset_total:,.2f} ({report.asset_pct}%) [Target: >=30%]",
         f"- 🔵 **Sustenance (Core Living)**: {report.currency}{report.sustenance_total:,.2f} ({report.sustenance_pct}%)",
         f"- 🟡 **Liabilities (Draining Overhead)**: {report.currency}{report.liability_total:,.2f} ({report.liability_pct}%)",
-        f"- 🔴 **Waste & Impulse**: {report.currency}{report.waste_total:,.2f} ({report.waste_pct}%)",
+        f"- 🔴 **Waste & Impulse**: {report.currency}{report.waste_total:,.2f} ({report.waste_pct}%) [Target: 0%]",
         "",
     ]
 
@@ -51,23 +51,14 @@ def build_deterministic_audit(report: FinancialHealthReport, transactions: list[
 
 def generate_spending_audit(report: FinancialHealthReport, transactions: list[TreasuryTransaction]) -> str:
     """
-    Query Gemini Pro to conduct a rigorous, first-principles billionaire financial audit.
+    Execute a 100% confidential, air-gapped financial audit on localhost.
+    Guaranteed zero external cloud calls:
+    1. Tries custom local Ollama model 'apex-cfo' or local 'llama3' on localhost:11434.
+    2. Falls back to offline mathematical deterministic audit if Ollama is offline.
     """
-    api_key = getattr(config.private_mode, "gemini_api_key", "") or os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return build_deterministic_audit(report, transactions)
+    from automation.ollama_client import ollama_client
 
-    model = getattr(config.private_mode, "gemini_model", "gemini-2.0-flash")
-
-    headers = {"Content-Type": "application/json"}
-    if api_key.startswith("AQ."):
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        headers["Authorization"] = f"Bearer {api_key}"
-        headers["x-goog-api-key"] = api_key
-    else:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-
-    # Prepare transaction summary for Gemini
+    # Prepare transaction summary for local LLM
     tx_summary = []
     for t in transactions[:30]:
         tx_summary.append(
@@ -76,16 +67,16 @@ def generate_spending_audit(report: FinancialHealthReport, transactions: list[Tr
         )
 
     prompt = (
-        "You are the Apex Ghost Chief Financial Officer and Billionaire Auditor. "
+        "You are apex-cfo, the air-gapped personal Chief Financial Officer and Billionaire Auditor. "
         "You combine the ruthless, first-principles cost pruning of Elon Musk with the Cashflow Quadrant and Asset-First discipline of Robert Kiyosaki.\n\n"
         f"Financial Summary:\n"
         f"- Monthly Income Baseline: {report.currency}{report.monthly_income:,.2f}\n"
         f"- Total Outflow: {report.currency}{report.total_expenses:,.2f}\n"
         f"- Net Cashflow: {report.currency}{report.net_cashflow:,.2f}\n"
-        f"- Asset Column: {report.currency}{report.asset_total:,.2f} ({report.asset_pct}% of total)\n"
+        f"- Asset Column: {report.currency}{report.asset_total:,.2f} ({report.asset_pct}% of total, Target: 30%+)\n"
         f"- Core Sustenance: {report.currency}{report.sustenance_total:,.2f} ({report.sustenance_pct}%)\n"
         f"- Liabilities: {report.currency}{report.liability_total:,.2f} ({report.liability_pct}%)\n"
-        f"- Waste/Impulse: {report.currency}{report.waste_total:,.2f} ({report.waste_pct}%)\n"
+        f"- Waste/Impulse: {report.currency}{report.waste_total:,.2f} ({report.waste_pct}%, Target: 0%)\n"
         f"- Runway: {report.runway_months} months\n"
         f"- Kiyosaki Asset/Bad-Debt Ratio: {report.kiyosaki_ratio}\n"
         f"- Musk Frugality Score: {report.musk_frugality_score}/100\n\n"
@@ -97,33 +88,33 @@ def generate_spending_audit(report: FinancialHealthReport, transactions: list[Tr
         "Tone: Direct, disciplined, executive, strategic. Do not mince words."
     )
 
-    data = {
-        "contents": [{
-            "parts": [{
-                "text": prompt
-            }]
-        }]
-    }
+    system_prompt = (
+        "You are apex-cfo, an air-gapped financial auditor running strictly on localhost. "
+        "You evaluate spending under Elon Musk's first-principles and Robert Kiyosaki's asset-first doctrine."
+    )
 
-    try:
-        response = requests.post(url, json=data, headers=headers, timeout=20)
-        if response.status_code != 200:
-            return build_deterministic_audit(report, transactions)
+    # 1. Attempt local query via Ollama (localhost:11434)
+    if ollama_client.check_connection():
+        original_model = ollama_client.model
+        try:
+            ollama_client.model = "apex-cfo"
+            response = ollama_client.query(prompt, system_prompt)
+            if not response:
+                ollama_client.model = original_model
+                response = ollama_client.query(prompt, system_prompt)
 
-        result = response.json()
-        candidates = result.get("candidates", [])
-        if not candidates:
-            return build_deterministic_audit(report, transactions)
+            if response and len(response.strip()) > 50:
+                return (
+                    f"### 🏛️ APEX TREASURY AUDIT (LOCAL AIR-GAPPED CFO)\n\n"
+                    f"{response.strip()}"
+                )
+        except Exception:
+            pass
+        finally:
+            ollama_client.model = original_model
 
-        parts = candidates[0].get("content", {}).get("parts", [])
-        if not parts:
-            return build_deterministic_audit(report, transactions)
-
-        text = parts[0].get("text", "")
-        return text.strip()
-
-    except Exception:
-        return build_deterministic_audit(report, transactions)
+    # 2. Complete offline mathematical deterministic audit fallback
+    return build_deterministic_audit(report, transactions)
 
 
 def generate_treasury_spoken_briefing(report: FinancialHealthReport) -> str:

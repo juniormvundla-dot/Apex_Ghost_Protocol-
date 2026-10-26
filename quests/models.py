@@ -75,6 +75,7 @@ class Quest:
     penalty_xp: int = 50
     evidence_required: bool = False
     evidence_submitted: str = ""
+    stream: str = "WARRIOR"
 
     def start(self) -> None:
         """

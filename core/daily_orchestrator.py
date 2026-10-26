@@ -65,7 +65,7 @@ class DailyOrchestrator:
         snapshot.adjusted_difficulty = coach_feedback.adjusted_difficulty
 
         quests = quest_service.ensure_today_quests(snapshot)
-        quest_service.print_daily_brief(quests, coach_feedback)
+        quest_service.print_daily_brief(quests, coach_feedback, snapshot)
 
         if config.daily_flow.interactive_quest_completion:
             self._interactive_quest_loop(quests)

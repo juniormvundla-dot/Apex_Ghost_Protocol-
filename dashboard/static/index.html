@@ -70,6 +70,19 @@
     </div>
   </header>
 
+  <!-- ── SHADOW DIRECTIVE HOLOGRAPHIC BANNER ─────────────────────── -->
+  <div class="shadow-directive-rail" id="shadow-directive-rail">
+    <div class="sdr-left">
+      <span class="sdr-glyph">◈</span>
+      <span class="sdr-mode" id="shadow-mode-tag">SYSTEM · SCULPTOR</span>
+    </div>
+    <div class="sdr-center">
+      <span class="sdr-label">[SHADOW DIRECTIVE]</span>
+      <span class="sdr-text" id="shadow-message-text">"Synchronizing neural baseline with the Hunter..."</span>
+    </div>
+    <button class="sdr-btn" id="sdr-regen-btn" title="Request Neural Directive" onclick="regenerateShadowDirective()">⚡ RE-SYNTHESIZE</button>
+  </div>
+
   <!-- ── MAIN CONTENT ───────────────────────────────────────────── -->
   <main class="main-content">
 
@@ -158,6 +171,17 @@
         <div id="health-grid" class="health-grid"></div>
       </section>
 
+      <!-- XP STREAMS MATRIX -->
+      <section class="xp-streams-card panel" id="xp-streams-panel">
+        <div class="panel-title-row">
+          <div class="panel-title"><span class="pt-glyph">✦</span> XP Streams Matrix</div>
+          <span class="streams-badge-tag">5 DOMAINS</span>
+        </div>
+        <div class="streams-list" id="streams-list">
+          <div class="stream-empty">SYNCHRONIZING DOMAINS...</div>
+        </div>
+      </section>
+
     </div><!-- /left-col -->
 
     <!-- RIGHT COLUMN -->
@@ -208,6 +232,21 @@
         </div>
         <div class="goal-bar-wrap">
           <div class="goal-bar-track"><div id="goal-bar" class="goal-bar-fill"></div></div>
+        </div>
+      </section>
+
+      <!-- SOLO DUNGEON / RAID RADAR -->
+      <section class="raid-card panel" id="raid-panel">
+        <div class="panel-title-row">
+          <div class="panel-title"><span class="pt-glyph">⚔</span> Solo Dungeon Raid</div>
+          <span class="raid-badge-tag" id="raid-badge-tag">ACTIVE TRIAL</span>
+        </div>
+        <div id="raid-body" class="raid-body">
+          <div class="raid-empty-box">
+            <div class="raid-prompt-title">NO DUNGEON RUNNING</div>
+            <div class="raid-prompt-desc">Enter a 24-hour high-stakes solo trial to earn domain loot and status.</div>
+            <button class="raid-start-btn" onclick="startSoloDungeon()">⚔ ENTER SOLO DUNGEON</button>
+          </div>
         </div>
       </section>
 

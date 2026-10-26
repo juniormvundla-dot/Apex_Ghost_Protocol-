@@ -84,43 +84,52 @@ class CircadianOptimizer:
         except Exception as e:
             print(f"[Circadian Optimizer] Calculation error: {e}")
 
-    def get_time_recommendation(self, difficulty, category):
+    def get_time_recommendation(self, difficulty: int, category: str, context_hint: str | None = None) -> str:
         """
-        Suggest correct hour window dynamically querying the local machine learning predictor.
+        Suggest optimal context-aware hour window dynamically querying the local machine learning predictor.
         """
         try:
             from quests.predictive_engine import predictive_engine
             
-            # Determine current weekday
-            today_weekday = datetime.now().weekday()
-            
-            # Probe hourly probabilities from 6:00 to 22:00
-            hourly_probs = []
-            for h in range(6, 23):
-                prob = predictive_engine.predict_focus_success_probability(h, today_weekday)
-                hourly_probs.append((h, prob))
-                
-            # Find peak hour (highest probability) and slump hour (lowest probability)
-            hourly_probs.sort(key=lambda x: x[1], reverse=True)
-            
-            peak_hour = hourly_probs[0][0]
-            slump_hour = hourly_probs[-1][0]
-            
-            # Format recommended windows
-            peak_window = f"{peak_hour:02d}:00 - {(peak_hour+2)%24:02d}:00"
-            slump_window = f"{slump_hour:02d}:00 - {(slump_hour+3)%24:02d}:00"
-            
-            if difficulty >= 3 or category == "BOSS":
+            # Query peak and slump windows from the predictive engine
+            windows = predictive_engine.get_circadian_peak_and_slump()
+            peak_window = f"{windows['peak_start']} - {windows['peak_end']}"
+            slump_window = f"{windows['slump_start']} - {windows['slump_end']}"
+
+            hint = (context_hint or "").upper()
+            cat = str(category).upper()
+
+            # 1. Morning Routine / Awakening Anchor
+            if hint == "WAKEUP" or "WAKE" in hint:
+                return "05:00 - 07:30 (Morning Anchor)"
+
+            # 2. Deep Work / High-Stakes Boss Trial
+            if hint == "DEEP_WORK" or cat == "BOSS" or difficulty >= 4:
+                return f"{peak_window} (AI Predicted Peak)"
+
+            # 3. Light Recovery / Reading / Health Wind-Down
+            if hint == "RECOVERY" or hint == "READING" or cat == "SIDE":
+                return f"{slump_window} (AI Predicted Slump)"
+
+            # 4. Evening Reflection
+            if hint == "EVENING":
+                return "19:00 - 21:30 (Evening Wind-Down)"
+
+            # 5. Core Maintenance / Habit Flow
+            if difficulty >= 3:
                 return f"{peak_window} (AI Predicted Peak)"
             else:
-                return f"{slump_window} (AI Predicted Slump)"
+                return "11:00 - 14:00 (Midday Focus)"
+                
         except Exception as e:
             print(f"[Circadian Optimizer] Fallback to hardcoded recommendations due to: {e}")
-            # Hard coding / high-priority quests -> peak window
-            if difficulty >= 3 or category == "BOSS":
+            hint = (context_hint or "").upper()
+            if hint == "WAKEUP":
+                return "05:00 - 07:30 (Morning Anchor)"
+            if difficulty >= 3 or str(category).upper() == "BOSS":
                 return f"{self.profile['peak_start']} - {self.profile['peak_end']} (Peak Flow)"
             else:
-                return f"{self.profile['slump_start']} - {self.profile['slump_end']} (Light Slot)"
+                return "11:00 - 14:00 (Midday Focus)"
 
 # Global optimizer instance
 circadian_optimizer = CircadianOptimizer()
