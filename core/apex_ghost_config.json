@@ -13,7 +13,7 @@
     "min_deep_work_minutes": 45,
     "voice_profile": "jarvis",
     "use_elevenlabs": true,
-    "elevenlabs_api_key": "YOUR_ELEVENLABS_API_KEY",
+    "elevenlabs_api_key": "sk_2720bca8a36dff277b22c52a22e4bbcc27436dabfd61cd45",
     "elevenlabs_voice_id": "nPczCjzI2devNBz1zQrb",
     "browser_name": "brave",
     "use_gemini": true,
