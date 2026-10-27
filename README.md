@@ -64,3 +64,9 @@ From the command line menu, you can launch the **Web HUD Dashboard**, enter a **
 ---
 
 *Built with caffeine and discipline.*
+
+---
+
+
+https://github.com/user-attachments/assets/1609b0a5-8e9a-4467-a02f-7bd13382c5eb
+
